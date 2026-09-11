@@ -1,0 +1,30 @@
+{
+  "name": "auratab",
+  "displayName": "AuraTab",
+  "version": "1.0.0",
+  "description": "把收藏夹变成你的浏览器主页（Chromium MV3 新标签页扩展）",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && vite build -c vite.config.sw.ts",
+    "build:fast": "vite build && vite build -c vite.config.sw.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.8.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.5"
+  }
+}
