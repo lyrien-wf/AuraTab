@@ -1,5 +1,5 @@
 /**
- * 单元测试用 chrome API mock（文档 11.1：mock chrome.bookmarks / chrome.storage）。
+ * 单元测试用 chrome API mock（chrome.bookmarks / chrome.storage）。
  * 只在需要 chrome 环境的测试里安装；纯函数（buildModel/searchLinks 等）无需 mock。
  */
 import type { BookmarkTreeNode } from '../core/chrome';

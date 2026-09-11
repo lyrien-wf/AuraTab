@@ -9,7 +9,7 @@ const THEME_ORDER = ['system', 'light', 'dark'] as const;
 const THEME_ICONS: Record<Settings['theme'], string> = { system: '🌗', light: '☀️', dark: '🌙' };
 const THEME_LABELS: Record<Settings['theme'], string> = { system: '跟随系统', light: '浅色', dark: '深色' };
 
-/** 工具栏弹窗：快捷网页搜索 + 设置入口 + 主题切换（文档中的可选快捷入口） */
+/** 工具栏弹窗：快捷网页搜索 + 设置入口 + 主题切换 */
 export default function PopupApp() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [query, setQuery] = useState('');

@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import type { LinkNode, Settings } from '../../core/types';
 import { BookmarkCard } from './BookmarkCard';
 
-/** 超过 300 条启用虚拟滚动（文档第 8 章） */
+/** 超过 300 条启用虚拟滚动 */
 const VIRTUAL_THRESHOLD = 300;
 const CARD_HEIGHT = 104;
 const GAP = 12;

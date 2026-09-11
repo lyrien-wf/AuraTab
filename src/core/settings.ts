@@ -1,7 +1,7 @@
 /**
  * 设置读写与默认值（chrome.storage.sync，体积小、跨设备同步）。
  * 首次运行默认勾选第一个根文件夹（Chrome「书签栏」/ Edge「收藏夹栏」），
- * 之后尊重用户选择 —— 包括刻意清空所有勾选（文档 11.2 的空态场景）。
+ * 之后尊重用户选择 —— 包括刻意清空所有勾选（主页会显示引导空态）。
  */
 import { hasStorage, storageGet, storageSet } from './chrome';
 import { listRootFolders } from './bookmarks';

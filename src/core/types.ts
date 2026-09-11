@@ -1,4 +1,4 @@
-/** 数据模型与设置类型定义（对应开发文档第 5 章） */
+/** 数据模型与设置类型定义 */
 
 export interface FolderNode {
   id: string;
@@ -58,7 +58,7 @@ export interface Settings {
   cardsPerRowHint: 'auto' | 6 | 8 | 10;
   theme: 'system' | 'light' | 'dark';
   clock: ClockSettings;
-  /** 是否允许打开 file: 协议书签，默认 false（文档第 9 章：file 可配置关闭） */
+  /** 是否允许打开 file: 协议书签，默认 false（安全策略：默认拦截，可配置放开） */
   allowFileUrls: boolean;
 }
 

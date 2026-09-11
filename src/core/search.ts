@@ -1,5 +1,5 @@
 /**
- * 搜索匹配逻辑（对应开发文档 6.4）。
+ * 搜索匹配逻辑。
  * 打分：标题前缀命中 > 标题包含 > 域名包含 > url 包含；不区分大小写；上限 200 条。
  */
 import type { BookmarkModel, LinkNode, Settings } from './types';

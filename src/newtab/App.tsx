@@ -153,7 +153,7 @@ export default function App() {
       if (q) location.href = buildSearchUrl(settings, q);
       return;
     }
-    // 有结果 → 打开第一条；无结果 → 走搜索引擎（文档 6.4）
+    // 有结果 → 打开第一条；无结果 → 走搜索引擎
     if (results && results.length > 0) {
       navigateCurrent(results[0].url, settings.allowFileUrls);
       return;

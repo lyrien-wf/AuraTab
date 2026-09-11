@@ -85,7 +85,7 @@ describe('buildModel 树构建', () => {
   });
 });
 
-describe('展示规则（文档 6.2 核心约束）', () => {
+describe('展示规则（核心约束）', () => {
   it('linksByFolder 只含直接子书签，不含子目录节点', () => {
     const m = buildModel(ROOT_CHILDREN, ONLY_BAR);
     const nasLinks = m.linksByFolder.get('11')!;
@@ -141,7 +141,7 @@ describe('空目录处理', () => {
 describe('顺序与 allLinks', () => {
   it('保持浏览器原始顺序', () => {
     const m = buildModel(ROOT_CHILDREN, { enabledRootIds: ['1'], showEmptyFolders: true });
-    // children 只含目录（书签 GitHub 不在其中 —— 这正是文档 6.2 的核心规则），且保持原始顺序
+    // children 只含目录（书签 GitHub 不在其中 —— 这正是项目的核心展示规则），且保持原始顺序
     expect(m.roots[0].children.map((c) => c.title)).toEqual(['nas', 'AI', '空目录', 'nas']);
     expect(m.allLinks.map((l) => l.id)).toEqual(['1101', '1111', '1121', '1201', '1202', '14', '1501']);
   });

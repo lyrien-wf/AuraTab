@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isSafeUrl, navigateCurrent, safeHref } from './url';
 
-describe('URL 协议校验（文档第 9 章）', () => {
+describe('URL 协议校验', () => {
   it('允许 http / https / ftp', () => {
     expect(isSafeUrl('http://example.com')).toBe(true);
     expect(isSafeUrl('https://example.com/a?b=1#c')).toBe(true);

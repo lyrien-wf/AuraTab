@@ -5,7 +5,7 @@ import { loadSettings, resetSettings, saveSettings } from '../core/settings';
 import { initTheme } from '../core/theme';
 import type { ClockSettings, FolderNode, Settings } from '../core/types';
 
-/** 设置页：根文件夹选择、外观、搜索引擎等（文档 M4） */
+/** 设置页：根文件夹选择、外观、搜索引擎等 */
 export default function OptionsApp() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const [roots, setRoots] = useState<RootFolderInfo[]>([]);

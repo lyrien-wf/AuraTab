@@ -1,6 +1,6 @@
 /**
  * 模型快照缓存（chrome.storage.local）。
- * 首次渲染前读取上次快照先行渲染，再用真实数据替换，消除白屏（文档第 8 章）。
+ * 首次渲染前读取上次快照先行渲染，再用真实数据替换，消除白屏。
  */
 import { storageGet, storageSet } from './chrome';
 import type { BookmarkModel, FolderNode, LinkNode } from './types';

@@ -1,5 +1,5 @@
 /**
- * 后台 Service Worker（文档 6.3）：
+ * 后台 Service Worker：
  * 监听全部书签变更事件，300ms 防抖后广播 BOOKMARKS_DIRTY，
  * 新标签页收到后重新 loadModel 并保留当前选中目录。
  */
