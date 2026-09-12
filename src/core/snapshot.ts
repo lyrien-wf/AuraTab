@@ -46,8 +46,17 @@ export function reviveModel(snapshot: ModelSnapshot): BookmarkModel {
   };
 }
 
+/**
+ * 快照是纯优化：读写失败一律降级（读不到就当没有缓存，写不进就放弃缓存），
+ * 绝不向上抛错 —— 否则存储异常会把新标签页的启动流程一起拖死。
+ */
 export async function loadSnapshot(): Promise<BookmarkModel | null> {
-  const snap = await storageGet<ModelSnapshot>('local', SNAPSHOT_KEY);
+  let snap: ModelSnapshot | undefined;
+  try {
+    snap = await storageGet<ModelSnapshot>('local', SNAPSHOT_KEY);
+  } catch {
+    return null;
+  }
   if (!snap || snap.v !== 1) return null;
   try {
     return reviveModel(snap);
@@ -65,10 +74,19 @@ export async function saveSnapshot(model: BookmarkModel): Promise<void> {
 }
 
 export async function loadUI(): Promise<UIState> {
-  return (await storageGet<UIState>('local', UI_KEY)) ?? {};
+  try {
+    return (await storageGet<UIState>('local', UI_KEY)) ?? {};
+  } catch {
+    // UI 状态（侧栏宽度 / 上次目录）读取失败时用默认值
+    return {};
+  }
 }
 
 export async function saveUI(patch: UIState): Promise<void> {
-  const prev = await loadUI();
-  await storageSet('local', UI_KEY, { ...prev, ...patch });
+  try {
+    const prev = await loadUI();
+    await storageSet('local', UI_KEY, { ...prev, ...patch });
+  } catch {
+    // UI 状态只是体验优化（记忆侧栏宽度与上次目录），写失败不影响使用
+  }
 }

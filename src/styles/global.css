@@ -214,6 +214,51 @@ kbd {
   50% { transform: scale(0.92); opacity: 0.6; }
 }
 
+/* 加载失败 / 渲染失败兜底界面（newtab、options、popup 共用） */
+.boot-error {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text);
+}
+.boot-error-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.boot-error-detail {
+  margin: 0;
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.boot-error-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.boot-error-hint {
+  margin: 0;
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.85;
+}
+/* 嵌在设置页 / 弹窗里时不要撑满视口高度 */
+.options-page .boot-error,
+.popup .boot-error {
+  min-height: 0;
+  padding: 40px 8px;
+}
+
 /* ---------------- 主页布局 ---------------- */
 
 .layout {
@@ -939,6 +984,9 @@ ul.tree-group {
 .saved-tip {
   color: #22a06b;
   font-size: 13px;
+  margin-right: auto;
+}
+.save-bar .opt-warn {
   margin-right: auto;
 }
 

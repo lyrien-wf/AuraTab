@@ -4,6 +4,7 @@ import { getTree } from '../core/chrome';
 import { loadSettings, resetSettings, saveSettings } from '../core/settings';
 import { initTheme } from '../core/theme';
 import type { ClockSettings, FolderNode, Settings } from '../core/types';
+import { BootError, describeError } from '../ui/BootError';
 
 /** 设置页：根文件夹选择、外观、搜索引擎等 */
 export default function OptionsApp() {
@@ -11,14 +12,32 @@ export default function OptionsApp() {
   const [roots, setRoots] = useState<RootFolderInfo[]>([]);
   const [folders, setFolders] = useState<FolderNode[]>([]);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  /** 重试计数：变化即重新执行一次加载流程 */
+  const [bootNonce, setBootNonce] = useState(0);
 
+  /* 加载失败不能停在「正在加载设置…」上：捕获后交给 BootError 兜底界面 + 重试 */
   useEffect(() => {
+    let alive = true;
     void (async () => {
-      const s = await loadSettings();
-      setDraft(s);
-      setRoots(await listRootFolders());
+      try {
+        const s = await loadSettings();
+        if (!alive) return;
+        setDraft(s);
+        const list = await listRootFolders();
+        if (!alive) return;
+        setRoots(list);
+      } catch (err) {
+        if (!alive) return;
+        console.error('[AuraTab] 设置加载失败：', err);
+        setLoadError(describeError(err));
+      }
     })();
-  }, []);
+    return () => {
+      alive = false;
+    };
+  }, [bootNonce]);
 
   // 「默认目录」候选：当前勾选根目录下的全部文件夹（含空目录，便于自由选择）
   const rootsKey = draft?.enabledRootIds.join(',') ?? '';
@@ -27,14 +46,26 @@ export default function OptionsApp() {
       setFolders([]);
       return;
     }
+    let alive = true;
     void (async () => {
-      const [root] = await getTree();
-      const model = buildModel(root?.children ?? [], {
-        enabledRootIds: draft.enabledRootIds,
-        showEmptyFolders: true,
-      });
-      setFolders(flattenFolders(model.roots));
+      try {
+        const [root] = await getTree();
+        const model = buildModel(root?.children ?? [], {
+          enabledRootIds: draft.enabledRootIds,
+          showEmptyFolders: true,
+        });
+        if (!alive) return;
+        setFolders(flattenFolders(model.roots));
+      } catch (err) {
+        // 候选目录只是下拉框的可选项，失败时退化为「只显示（不指定）」
+        if (!alive) return;
+        console.error('[AuraTab] 默认目录候选加载失败：', err);
+        setFolders([]);
+      }
     })();
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootsKey]);
 
@@ -46,6 +77,21 @@ export default function OptionsApp() {
     const t = setTimeout(() => setSaved(false), 2000);
     return () => clearTimeout(t);
   }, [saved]);
+
+  if (loadError) {
+    return (
+      <div className="options-page">
+        <BootError
+          title="设置加载失败"
+          detail={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setBootNonce((n) => n + 1);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (!draft) {
     return (
@@ -69,13 +115,27 @@ export default function OptionsApp() {
     });
 
   const onSave = async () => {
-    await saveSettings(draft);
-    setSaved(true);
+    try {
+      await saveSettings(draft);
+      setSaveError(null);
+      setSaved(true);
+    } catch (err) {
+      // 写 sync 可能因配额/扩展上下文失效而失败，不能让用户误以为已保存
+      console.error('[AuraTab] 设置保存失败：', err);
+      setSaveError(describeError(err));
+      setSaved(false);
+    }
   };
   const onReset = async () => {
-    const fresh = await resetSettings();
-    setDraft(fresh);
-    setSaved(true);
+    try {
+      const fresh = await resetSettings();
+      setDraft(fresh);
+      setSaveError(null);
+      setSaved(true);
+    } catch (err) {
+      console.error('[AuraTab] 恢复默认失败：', err);
+      setSaveError(describeError(err));
+    }
   };
 
   return (
@@ -280,6 +340,7 @@ export default function OptionsApp() {
 
       <div className="save-bar">
         {saved && <span className="saved-tip">✓ 已保存，新标签页会实时生效</span>}
+        {saveError && <span className="opt-warn">保存失败：{saveError}</span>}
         <button className="btn ghost" onClick={onReset}>
           恢复默认
         </button>

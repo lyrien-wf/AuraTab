@@ -1,0 +1,2 @@
+# 行尾统一：仓库内（index）存 LF，工作区也检出 LF，覆盖各平台的 core.autocrlf 设置
+* text=auto eol=lf

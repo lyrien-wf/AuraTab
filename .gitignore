@@ -6,3 +6,5 @@ coverage/
 # 日志与本地文件
 *.log
 *.local
+
+dev_doc/

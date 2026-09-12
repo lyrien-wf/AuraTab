@@ -8,6 +8,7 @@ import { loadSnapshot, loadUI, saveSnapshot, saveUI } from '../core/snapshot';
 import { initTheme } from '../core/theme';
 import type { BookmarkModel, LinkNode, Settings } from '../core/types';
 import { navigateCurrent } from '../core/url';
+import { BootError, describeError } from '../ui/BootError';
 import { BookmarkGrid } from './components/BookmarkGrid';
 import { Clock } from './components/Clock';
 import { ContextMenu } from './components/ContextMenu';
@@ -31,51 +32,66 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; link: LinkNode } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [bootError, setBootError] = useState<string | null>(null);
+  /** 重试计数：变化即重新执行一次启动流程 */
+  const [bootNonce, setBootNonce] = useState(0);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<Settings | null>(null);
   settingsRef.current = settings;
 
-  /** 重新加载模型，尽量保留当前选中目录 */
+  /** 重新加载模型，尽量保留当前选中目录；失败时保留旧模型并提示，不打断已渲染的界面 */
   const reloadModel = useCallback(async (s: Settings) => {
-    const m = await loadModel(s);
-    setModel(m);
-    void saveSnapshot(m);
-    setSelectedId((prev) => {
-      if (prev && m.folderIndex.has(prev)) return prev;
-      return [s.defaultFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
-    });
+    try {
+      const m = await loadModel(s);
+      setModel(m);
+      void saveSnapshot(m);
+      setSelectedId((prev) => {
+        if (prev && m.folderIndex.has(prev)) return prev;
+        return [s.defaultFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
+      });
+    } catch (err) {
+      console.error('[AuraTab] 书签刷新失败：', err);
+      setToast('书签刷新失败，请稍后重试');
+    }
   }, []);
 
-  /* 启动：设置 → 上次 UI 状态 → 快照先渲染 → 真实模型替换（消除白屏） */
+  /* 启动：设置 → 上次 UI 状态 → 快照先渲染 → 真实模型替换（消除白屏）。
+     任何一步失败都不能停在「正在加载」上：捕获后交给 BootError 兜底界面 + 重试。 */
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const s = await loadSettings();
-      if (!alive) return;
-      setSettings(s);
+      try {
+        const s = await loadSettings();
+        if (!alive) return;
+        setSettings(s);
 
-      const ui = await loadUI();
-      if (!alive) return;
-      if (ui.sidebarWidth) setSidebarWidth(clampWidth(ui.sidebarWidth));
+        const ui = await loadUI();
+        if (!alive) return;
+        if (ui.sidebarWidth) setSidebarWidth(clampWidth(ui.sidebarWidth));
 
-      const snapshot = await loadSnapshot();
-      if (alive && snapshot) setModel(snapshot);
+        const snapshot = await loadSnapshot();
+        if (alive && snapshot) setModel(snapshot);
 
-      const m = await loadModel(s);
-      if (!alive) return;
-      setModel(m);
-      void saveSnapshot(m);
+        const m = await loadModel(s);
+        if (!alive) return;
+        setModel(m);
+        void saveSnapshot(m);
 
-      const initial =
-        [s.defaultFolderId, ui.lastFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
-      setSelectedId(initial);
+        const initial =
+          [s.defaultFolderId, ui.lastFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
+        setSelectedId(initial);
+      } catch (err) {
+        if (!alive) return;
+        console.error('[AuraTab] 初始化失败：', err);
+        setBootError(describeError(err));
+      }
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [bootNonce]);
 
   /* 订阅：后台书签失效广播 + 设置页保存 */
   useEffect(() => {
@@ -196,6 +212,19 @@ export default function App() {
     settingsRef.current = next;
     await saveSettings(next);
   }, []);
+
+  if (bootError) {
+    return (
+      <BootError
+        title="书签加载失败"
+        detail={bootError}
+        onRetry={() => {
+          setBootError(null);
+          setBootNonce((n) => n + 1);
+        }}
+      />
+    );
+  }
 
   if (!settings || !model) {
     return (

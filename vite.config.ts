@@ -9,6 +9,11 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     target: 'chrome114',
+    // 关闭 Vite 注入的 <link rel="modulepreload"> 与预加载 polyfill：
+    // 扩展页里这些预加载会被 Chrome 判为 cross-world extension resource mismatch，
+    // 白刷 4 条 Issues 却毫无收益 —— 资源就在本地，且代码里没有动态 import()，
+    // 静态依赖由入口 <script type="module"> 直接拉取（chrome114 原生支持模块）。
+    modulePreload: false,
     rollupOptions: {
       input: {
         newtab: 'newtab.html',

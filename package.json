@@ -1,7 +1,7 @@
 {
   "name": "auratab",
   "displayName": "AuraTab",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "把收藏夹变成你的浏览器主页（Chromium MV3 新标签页扩展）",
   "private": true,
   "type": "module",

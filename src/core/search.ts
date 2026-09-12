@@ -75,5 +75,7 @@ export function buildSearchUrl(settings: Pick<Settings, 'searchEngine' | 'custom
     if (tpl && tpl.includes('%s')) return tpl.replace('%s', encoded);
     return ENGINE_URLS.bing.replace('%s', encoded);
   }
-  return ENGINE_URLS[settings.searchEngine].replace('%s', encoded);
+  // 设置读取时已做枚举归一化，这里再兜一层：ENGINE_URLS 取到 undefined 会抛 TypeError
+  const tpl = ENGINE_URLS[settings.searchEngine] ?? ENGINE_URLS.bing;
+  return tpl.replace('%s', encoded);
 }

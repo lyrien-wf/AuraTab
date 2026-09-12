@@ -64,7 +64,3 @@ Manifest V3 · React 18 · TypeScript · Vite · Vitest · @tanstack/react-virtu
 - 书签数据只在浏览器本地内存与 `chrome.storage` 中流转；设置项通过浏览器自带的账号体系（`storage.sync`）跨设备同步
 - 站点图标读取浏览器本地 `_favicon` 缓存，不请求第三方图标服务
 - 严格 CSP、不使用 `eval`；打开链接前校验协议，始终拦截 `javascript:` 等伪协议书签
-
-## 路线图
-
-- **v1.1**：主页内书签增删改、拼音首字母搜索、扩展商店上架
