@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   clock: { format24h: true, showSeconds: false, showDate: true },
   allowFileUrls: false,
+  openInNewTab: false,
 };
 
 /** 合法取值白名单：存储里的枚举值一律经此校验，非法值归一回默认（见 mergeSettings） */
@@ -98,6 +99,7 @@ export function mergeSettings(stored: Partial<Settings>): Settings {
       showDate: pickBool(rawClock.showDate, DEFAULT_SETTINGS.clock.showDate),
     },
     allowFileUrls: pickBool(raw.allowFileUrls, DEFAULT_SETTINGS.allowFileUrls),
+    openInNewTab: pickBool(raw.openInNewTab, DEFAULT_SETTINGS.openInNewTab),
   };
 
   // 归一化值覆盖已知字段，raw 里本版本不认识的新字段原样透传

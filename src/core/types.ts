@@ -60,6 +60,8 @@ export interface Settings {
   clock: ClockSettings;
   /** 是否允许打开 file: 协议书签，默认 false（安全策略：默认拦截，可配置放开） */
   allowFileUrls: boolean;
+  /** 书签在新标签页打开；默认 false = 当前标签页跳转（Ctrl/Cmd+点击与中键始终新标签页） */
+  openInNewTab: boolean;
 }
 
 /** Service Worker 广播的书签失效事件 */

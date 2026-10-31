@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { loadModel } from '../core/bookmarks';
-import { onBookmarksDirty, openOptionsPage } from '../core/chrome';
+import { onBookmarksDirty, openNewTab, openOptionsPage } from '../core/chrome';
 import { ENGINE_LABELS, buildSearchUrl, isEngineQuery, searchLinks, stripEnginePrefix } from '../core/search';
 import { affectsBookmarkModel, loadSettings, onSettingsChanged, saveSettings } from '../core/settings';
 import { loadSnapshot, loadUI, saveSnapshot, saveUI } from '../core/snapshot';
 import { initTheme } from '../core/theme';
 import type { BookmarkModel, LinkNode, Settings } from '../core/types';
-import { navigateCurrent } from '../core/url';
+import { isSafeUrl, navigateCurrent } from '../core/url';
 import { BootError, describeError } from '../ui/BootError';
 import { BookmarkGrid } from './components/BookmarkGrid';
 import { Clock } from './components/Clock';
@@ -196,9 +196,11 @@ export default function App() {
       if (q) location.href = buildSearchUrl(settings, q);
       return;
     }
-    // 有结果 → 打开第一条；无结果 → 走搜索引擎
+    // 有结果 → 打开第一条（遵循"新标签页打开"设置）；无结果 → 走搜索引擎
     if (results && results.length > 0) {
-      navigateCurrent(results[0].url, settings.allowFileUrls);
+      const url = results[0].url;
+      if (settings.openInNewTab && isSafeUrl(url, settings.allowFileUrls)) openNewTab(url);
+      else navigateCurrent(url, settings.allowFileUrls);
       return;
     }
     location.href = buildSearchUrl(settings, raw);
@@ -417,6 +419,7 @@ export default function App() {
               links={visibleLinks}
               perRow={settings.cardsPerRowHint}
               allowFileUrls={settings.allowFileUrls}
+              openInNewTab={settings.openInNewTab}
               scrollParentRef={contentRef}
               onCardContextMenu={handleCardContextMenu}
             />

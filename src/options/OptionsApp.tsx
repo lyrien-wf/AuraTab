@@ -336,6 +336,16 @@ export default function OptionsApp() {
             允许打开 file: 协议书签（默认拦截；javascript: 等伪协议始终拦截）
           </label>
         </div>
+        <div className="opt-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.openInNewTab}
+              onChange={(e) => update({ openInNewTab: e.target.checked })}
+            />{' '}
+            在新标签页打开书签（默认当前标签页跳转；Ctrl/Cmd+点击与中键始终新标签页）
+          </label>
+        </div>
       </section>
 
       <div className="save-bar">

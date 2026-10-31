@@ -15,6 +15,7 @@ interface BookmarkGridProps {
   links: LinkNode[];
   perRow: Settings['cardsPerRowHint'];
   allowFileUrls: boolean;
+  openInNewTab: boolean;
   scrollParentRef: RefObject<HTMLDivElement>;
   onCardContextMenu: (e: ReactMouseEvent, link: LinkNode) => void;
 }
@@ -35,11 +36,17 @@ function gridColumns(perRow: Settings['cardsPerRowHint']): CSSProperties {
   return { gridTemplateColumns: `repeat(auto-fill, minmax(${minTrack}, 1fr))` };
 }
 
-function SimpleGrid({ links, perRow, allowFileUrls, onCardContextMenu }: BookmarkGridProps) {
+function SimpleGrid({ links, perRow, allowFileUrls, openInNewTab, onCardContextMenu }: BookmarkGridProps) {
   return (
     <div className="grid" role="list" style={gridColumns(perRow)}>
       {links.map((link) => (
-        <BookmarkCard key={link.id} link={link} allowFileUrls={allowFileUrls} onContextMenu={onCardContextMenu} />
+        <BookmarkCard
+          key={link.id}
+          link={link}
+          allowFileUrls={allowFileUrls}
+          openInNewTab={openInNewTab}
+          onContextMenu={onCardContextMenu}
+        />
       ))}
     </div>
   );
@@ -49,7 +56,7 @@ function SimpleGrid({ links, perRow, allowFileUrls, onCardContextMenu }: Bookmar
  * 虚拟滚动网格：外层滚动容器是页面内容区（.content），
  * 用 scrollMargin 抵消网格在滚动容器内的偏移。
  */
-function VirtualGrid({ links, perRow, allowFileUrls, scrollParentRef, onCardContextMenu }: BookmarkGridProps) {
+function VirtualGrid({ links, perRow, allowFileUrls, openInNewTab, scrollParentRef, onCardContextMenu }: BookmarkGridProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(6);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -106,7 +113,13 @@ function VirtualGrid({ links, perRow, allowFileUrls, scrollParentRef, onCardCont
             }}
           >
             {slice.map((link) => (
-              <BookmarkCard key={link.id} link={link} allowFileUrls={allowFileUrls} onContextMenu={onCardContextMenu} />
+              <BookmarkCard
+                key={link.id}
+                link={link}
+                allowFileUrls={allowFileUrls}
+                openInNewTab={openInNewTab}
+                onContextMenu={onCardContextMenu}
+              />
             ))}
           </div>
         );

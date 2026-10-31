@@ -145,6 +145,11 @@ describe('mergeSettings 脏数据归一化', () => {
     expect(s.enabledRootIds).toEqual(['1']);
     expect(s.searchEngine).toBe(DEFAULT_SETTINGS.searchEngine);
   });
+
+  it('非法 openInNewTab 归一回默认 false，合法布尔保留', () => {
+    expect(mergeSettings({ openInNewTab: 'yes' as unknown as Settings['openInNewTab'] }).openInNewTab).toBe(false);
+    expect(mergeSettings({ openInNewTab: true }).openInNewTab).toBe(true);
+  });
 });
 
 describe('saveSettings', () => {
