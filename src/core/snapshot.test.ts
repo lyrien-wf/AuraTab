@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { buildModel } from './bookmarks';
-import { resetMemoryStore, storageSet } from './chrome';
-import { loadSnapshot, loadUI, saveSnapshot, saveUI } from './snapshot';
+import { resetMemoryStore, storageGet, storageSet } from './chrome';
+import { SNAPSHOT_KEY, loadSnapshot, loadUI, saveSnapshot, saveUI } from './snapshot';
 import type { BookmarkTreeNode } from './chrome';
+import type { LinkNode } from './types';
 
 /**
  * saveUI 走 chrome.ts 的内存降级存储（测试环境未安装 chrome mock），
@@ -37,8 +38,9 @@ describe('saveUI 写入串行化（P1-4）', () => {
   });
 });
 
-/** 快照序列化 / 回读往返与畸形快照丢弃（P2-13：snapshot 纯函数覆盖） */
-describe('快照往返与降级', () => {
+/** 快照 v2 往返、指纹 / 过期 / 体积门禁与旧版清理（P1-2 + P2-13 覆盖） */
+describe('快照往返与降级（v2）', () => {
+  const SCOPE = { enabledRootIds: ['1'], showEmptyFolders: false };
   const TREE: BookmarkTreeNode[] = [
     {
       id: '1',
@@ -54,26 +56,58 @@ describe('快照往返与降级', () => {
     resetMemoryStore();
   });
 
-  it('serialize → 存储 → revive 往返后模型等价', async () => {
-    const model = buildModel(TREE, { enabledRootIds: ['1'], showEmptyFolders: false });
-    await saveSnapshot(model);
-    const revived = await loadSnapshot();
+  it('serialize → 存储 → revive 往返后模型等价（allLinks 由 links 推导）', async () => {
+    const model = buildModel(TREE, SCOPE);
+    await saveSnapshot(model, SCOPE);
+    const revived = await loadSnapshot(SCOPE);
     expect(revived).not.toBeNull();
     expect(revived!.roots).toEqual(model.roots);
-    expect(revived!.allLinks).toEqual(model.allLinks);
+    const ids = (links: LinkNode[]) => links.map((l) => l.id).sort();
+    expect(ids(revived!.allLinks)).toEqual(ids(model.allLinks));
     expect([...revived!.linksByFolder.entries()]).toEqual([...model.linksByFolder.entries()]);
-    expect(revived!.folderIndex.size).toBe(model.folderIndex.size);
     expect(revived!.folderIndex.get('11')?.title).toBe('nas');
   });
 
-  it('版本不符 / 字段缺失的畸形快照被丢弃为 null', async () => {
-    await storageSet('local', 'modelSnapshot.v1', { v: 99, roots: [] });
-    expect(await loadSnapshot()).toBeNull();
+  it('作用域指纹不符直接丢弃（改完设置不再闪旧数据）', async () => {
+    await saveSnapshot(buildModel(TREE, SCOPE), SCOPE);
+    expect(await loadSnapshot({ ...SCOPE, enabledRootIds: ['2'] })).toBeNull();
+    expect(await loadSnapshot({ ...SCOPE, showEmptyFolders: true })).toBeNull();
+    expect(await loadSnapshot(SCOPE)).not.toBeNull();
+  });
 
-    await storageSet('local', 'modelSnapshot.v1', { v: 1 });
-    expect(await loadSnapshot()).toBeNull();
+  it('超过 7 天的快照被丢弃', async () => {
+    await saveSnapshot(buildModel(TREE, SCOPE), SCOPE);
+    const snap = await storageGet<Record<string, unknown>>('local', SNAPSHOT_KEY);
+    await storageSet('local', SNAPSHOT_KEY, { ...snap, savedAt: Date.now() - 8 * 24 * 3600 * 1000 });
+    expect(await loadSnapshot(SCOPE)).toBeNull();
+  });
 
-    await storageSet('local', 'modelSnapshot.v1', '不是对象');
-    expect(await loadSnapshot()).toBeNull();
+  it('序列化超过 2MB 的模型不写入缓存', async () => {
+    const big: BookmarkTreeNode[] = [
+      {
+        id: '1',
+        title: 'r',
+        children: Array.from({ length: 6000 }, (_, i) => ({
+          id: `b${i}`,
+          title: `title-${i}-${'x'.repeat(400)}`,
+          url: `https://example.com/${i}`,
+        })),
+      },
+    ];
+    await saveSnapshot(buildModel(big, SCOPE), SCOPE);
+    expect(await storageGet('local', SNAPSHOT_KEY)).toBeUndefined();
+    expect(await loadSnapshot(SCOPE)).toBeNull();
+  });
+
+  it('旧 v1 快照不再读取，并在 v2 写入成功后被清理', async () => {
+    await storageSet('local', 'modelSnapshot.v1', { v: 1, roots: [], links: [], allLinks: [] });
+    expect(await loadSnapshot(SCOPE)).toBeNull();
+    await saveSnapshot(buildModel(TREE, SCOPE), SCOPE);
+    expect(await storageGet('local', 'modelSnapshot.v1')).toBeUndefined();
+  });
+
+  it('形状不对的脏快照被丢弃', async () => {
+    await storageSet('local', SNAPSHOT_KEY, { v: 2, savedAt: Date.now(), rootsKey: '1|0' });
+    expect(await loadSnapshot(SCOPE)).toBeNull();
   });
 });

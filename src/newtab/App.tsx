@@ -48,7 +48,7 @@ export default function App() {
     try {
       const m = await loadModel(s);
       setModel(m);
-      void saveSnapshot(m);
+      void saveSnapshot(m, s);
       setSelectedId((prev) => {
         if (prev && m.folderIndex.has(prev)) return prev;
         return [s.defaultFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
@@ -73,13 +73,13 @@ export default function App() {
         if (!alive) return;
         if (ui.sidebarWidth) setSidebarWidth(clampWidth(ui.sidebarWidth));
 
-        const snapshot = await loadSnapshot();
+        const snapshot = await loadSnapshot(s);
         if (alive && snapshot) setModel(snapshot);
 
         const m = await loadModel(s);
         if (!alive) return;
         setModel(m);
-        void saveSnapshot(m);
+        void saveSnapshot(m, s);
 
         const initial =
           [s.defaultFolderId, ui.lastFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;

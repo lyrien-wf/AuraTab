@@ -144,6 +144,15 @@ export async function storageSet(area: StorageArea, key: string, value: unknown)
   memoryStore[area].set(key, value);
 }
 
+/** 删除存储键（快照 v1→v2 迁移清理用；键不存在时为 no-op） */
+export async function storageRemove(area: StorageArea, key: string): Promise<void> {
+  if (hasStorage()) {
+    await chromeGlobal()!.storage[area].remove(key);
+    return;
+  }
+  memoryStore[area].delete(key);
+}
+
 /** 测试辅助：清空内存降级存储 */
 export function resetMemoryStore(): void {
   memoryStore.local.clear();

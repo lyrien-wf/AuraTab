@@ -1,9 +1,13 @@
 /**
- * 设置读写与默认值（chrome.storage.sync，体积小、跨设备同步）。
+ * 设置读写与默认值（chrome.storage.local，仅存本机、不跨设备）。
  * 首次运行默认勾选第一个根文件夹（Chrome「书签栏」/ Edge「收藏夹栏」），
  * 之后尊重用户选择 —— 包括刻意清空所有勾选（主页会显示引导空态）。
+ *
+ * 历史上存 storage.sync，但 defaultFolderId 等字段持有设备本地的书签 id，
+ * 跨设备同步会让另一台设备静默选中错误目录（P1-1）；跨设备传递设置并非需求，
+ * 故整体改存 local，读取时对遗留的 sync 数据做一次迁移。
  */
-import { hasStorage, storageGet, storageSet } from './chrome';
+import { hasStorage, storageGet, storageRemove, storageSet } from './chrome';
 import { listRootFolders } from './bookmarks';
 import type { Settings } from './types';
 
@@ -119,8 +123,17 @@ function hasStoredSettings(stored: unknown): stored is Partial<Settings> {
 }
 
 export async function loadSettings(): Promise<Settings> {
-  const stored = await storageGet<Partial<Settings>>('sync', SETTINGS_KEY);
+  const stored = await storageGet<Partial<Settings>>('local', SETTINGS_KEY);
   if (hasStoredSettings(stored)) return mergeSettings(stored);
+
+  // 一次性迁移：旧版本把设置存在 sync（P1-1），搬回 local 并清掉 sync 孤儿键
+  const legacy = await storageGet<Partial<Settings>>('sync', SETTINGS_KEY);
+  if (hasStoredSettings(legacy)) {
+    const merged = mergeSettings(legacy);
+    await storageSet('local', SETTINGS_KEY, merged);
+    void storageRemove('sync', SETTINGS_KEY);
+    return merged;
+  }
 
   // 首次运行：动态取根文件夹列表，默认勾选第一个（不硬编码 id）
   const roots = await listRootFolders();
@@ -133,7 +146,7 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-  await storageSet('sync', SETTINGS_KEY, settings);
+  await storageSet('local', SETTINGS_KEY, settings);
 }
 
 export async function resetSettings(): Promise<Settings> {
@@ -150,7 +163,7 @@ export function onSettingsChanged(cb: (settings: Settings) => void): () => void 
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string,
   ) => {
-    if (areaName !== 'sync') return;
+    if (areaName !== 'local') return;
     const next = changes[SETTINGS_KEY]?.newValue;
     // 变更值同样要过归一化，脏值不直接喂给 UI
     if (hasStoredSettings(next)) cb(mergeSettings(next));

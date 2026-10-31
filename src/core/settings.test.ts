@@ -31,11 +31,20 @@ describe('loadSettings', () => {
     const s = await loadSettings();
     expect(s.enabledRootIds).toEqual(['1']);
     expect(s.searchEngine).toBe(DEFAULT_SETTINGS.searchEngine);
-    expect(mock.store.sync.get('settings')).toBeTruthy();
+    expect(mock.store.local.get('settings')).toBeTruthy();
+  });
+
+  it('sync 里的遗留设置一次性迁移到 local 并清理 sync 键（P1-1）', async () => {
+    mock = installChromeMock({ tree: TREE, syncData: { settings: { enabledRootIds: ['1'], searchEngine: 'google' } } });
+    const s = await loadSettings();
+    expect(s.searchEngine).toBe('google');
+    expect(mock.store.local.get('settings')).toBeTruthy();
+    expect(mock.store.sync.get('settings')).toBeUndefined();
+    expect((await loadSettings()).searchEngine).toBe('google');
   });
 
   it('已保存空勾选时尊重用户选择，不再自动回填', async () => {
-    mock = installChromeMock({ tree: TREE, syncData: { settings: { enabledRootIds: [] } } });
+    mock = installChromeMock({ tree: TREE, localData: { settings: { enabledRootIds: [] } } });
     const s = await loadSettings();
     expect(s.enabledRootIds).toEqual([]);
     // 其余字段用默认值补齐
@@ -75,7 +84,7 @@ describe('mergeSettings', () => {
 
 /**
  * 这些用例锁定的是「脏设置不能再把页面搞崩」：
- * storage.sync 可能是旧版本、其他设备或手工改过的内容，非法值必须在读取时就归一回默认。
+ * storage 里的设置可能是旧版本迁移残留或手工改过的内容，非法值必须在读取时就归一回默认。
  */
 describe('mergeSettings 脏数据归一化', () => {
   it('非法 searchEngine 回退 bing，且 buildSearchUrl 不再抛错', () => {
@@ -131,7 +140,7 @@ describe('mergeSettings 脏数据归一化', () => {
   });
 
   it('存储里是脏值（非对象）时按首次运行处理，回填第一个根目录', async () => {
-    mock = installChromeMock({ tree: TREE, syncData: { settings: 42 } });
+    mock = installChromeMock({ tree: TREE, localData: { settings: 42 } });
     const s = await loadSettings();
     expect(s.enabledRootIds).toEqual(['1']);
     expect(s.searchEngine).toBe(DEFAULT_SETTINGS.searchEngine);
@@ -139,7 +148,7 @@ describe('mergeSettings 脏数据归一化', () => {
 });
 
 describe('saveSettings', () => {
-  it('保存到 sync 区并可回读', async () => {
+  it('保存到 local 区并可回读', async () => {
     mock = installChromeMock({ tree: TREE });
     const s = await loadSettings();
     const next: Settings = { ...s, searchEngine: 'baidu', treeDefaultExpandDepth: 2 };
@@ -167,7 +176,7 @@ describe('affectsBookmarkModel', () => {
     expect(affectsBookmarkModel(base, { ...base, showEmptyFolders: true })).toBe(true);
   });
 
-  it('内容完全相同的设置（自己写 sync 的回声）不触发重载', () => {
+  it('内容完全相同的设置（自己写 local 的回声）不触发重载', () => {
     expect(affectsBookmarkModel(base, { ...base, enabledRootIds: [...base.enabledRootIds] })).toBe(false);
   });
 });

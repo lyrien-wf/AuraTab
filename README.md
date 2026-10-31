@@ -71,7 +71,7 @@ Manifest V3 · React 18 · TypeScript · Vite · Vitest · @tanstack/react-virtu
 
 **不收集、不上传任何数据，没有后端服务。**
 
-- 整个扩展没有任何网络请求代码（无 `fetch` / `XMLHttpRequest`），唯一的"出网"是你主动按 Enter 跳转搜索引擎
-- 书签数据只在浏览器本地内存与 `chrome.storage` 中流转；设置项通过浏览器自带的账号体系（`storage.sync`）跨设备同步
-- 站点图标读取浏览器本地 `_favicon` 缓存，不请求第三方图标服务
+- 扩展代码中不存在任何网络请求代码（无 `fetch` / `XMLHttpRequest`），唯一的"出网"是你主动按 Enter 跳转搜索引擎
+- 书签数据与设置都只在浏览器本地内存与 `chrome.storage.local` 中流转，**不跨设备同步**、不关联任何账号
+- 站点图标通过浏览器提供的 `_favicon` 端点读取（本机缓存），扩展代码不直接请求任何第三方图标服务
 - 严格 CSP、不使用 `eval`；打开链接前校验协议，始终拦截 `javascript:` 等伪协议书签
