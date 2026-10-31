@@ -15,11 +15,6 @@ export function isSafeUrl(url: string, allowFileUrls = false): boolean {
   }
 }
 
-/** 供 <a href> 使用：不安全链接返回 undefined（渲染为不可点击并标记「已拦截」） */
-export function safeHref(url: string, allowFileUrls = false): string | undefined {
-  return isSafeUrl(url, allowFileUrls) ? url : undefined;
-}
-
 /** 在当前标签页打开（校验协议后跳转） */
 export function navigateCurrent(url: string, allowFileUrls = false): boolean {
   if (!isSafeUrl(url, allowFileUrls)) return false;

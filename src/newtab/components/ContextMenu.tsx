@@ -13,7 +13,7 @@ interface ContextMenuProps {
 }
 
 const MENU_W = 190;
-const MENU_H = 118;
+const MENU_H = 142;
 
 /** 卡片右键菜单（v1 只读：在新标签页打开 / 复制链接） */
 export function ContextMenu({ x, y, link, allowFileUrls, onClose, onToast }: ContextMenuProps) {
@@ -54,6 +54,8 @@ export function ContextMenu({ x, y, link, allowFileUrls, onClose, onToast }: Con
       </button>
       <button
         role="menuitem"
+        /* 与「在新标签页打开」一致：被拦截的伪协议 URL 不允许一键复制到别处（P2-7） */
+        disabled={!safe}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(link.url);
@@ -66,6 +68,7 @@ export function ContextMenu({ x, y, link, allowFileUrls, onClose, onToast }: Con
       >
         复制链接
       </button>
+      {!safe && <div className="ctx-warn">该链接已被安全策略拦截，无法打开或复制</div>}
       <div className="ctx-url" title={link.url}>
         {link.url}
       </div>

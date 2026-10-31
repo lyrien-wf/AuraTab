@@ -24,8 +24,15 @@ export function BookmarkGrid(props: BookmarkGridProps) {
   return <SimpleGrid {...props} />;
 }
 
+/**
+ * 固定列数时不写死 `repeat(n, minmax(0,1fr))`：轨道下限取「148px 设计下限」与
+ * 「均分成 n 列所需宽度」的较大值，配 auto-fill —— 宽度够时正好 n 列，
+ * 窄窗口自动降列，卡片不再被压到 148px 以下裁切标题（P2-5）
+ */
 function gridColumns(perRow: Settings['cardsPerRowHint']): CSSProperties {
-  return perRow === 'auto' ? {} : { gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` };
+  if (perRow === 'auto') return {};
+  const minTrack = `max(${MIN_CARD_WIDTH}px, calc((100% - ${(perRow - 1) * GAP}px) / ${perRow}))`;
+  return { gridTemplateColumns: `repeat(auto-fill, minmax(${minTrack}, 1fr))` };
 }
 
 function SimpleGrid({ links, perRow, allowFileUrls, onCardContextMenu }: BookmarkGridProps) {
@@ -51,8 +58,9 @@ function VirtualGrid({ links, perRow, allowFileUrls, scrollParentRef, onCardCont
     const el = wrapRef.current;
     if (!el) return;
     const compute = () => {
-      if (perRow !== 'auto') setCols(perRow);
-      else setCols(Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_CARD_WIDTH + GAP))));
+      // 与 CSS 的 auto-fill 降列行为保持一致：固定列数在窄容器下取能放下的列数
+      const fit = Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_CARD_WIDTH + GAP)));
+      setCols(perRow === 'auto' ? fit : Math.min(perRow, fit));
       setScrollMargin(el.offsetTop);
     };
     compute();

@@ -38,6 +38,8 @@ export default function App() {
 
   const searchRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const treeScrollRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<Settings | null>(null);
   settingsRef.current = settings;
 
@@ -113,8 +115,8 @@ export default function App() {
     };
   }, [reloadModel]);
 
-  /* 主题 */
-  useEffect(() => (settings ? initTheme(settings.theme) : undefined), [settings?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* 主题：只在主题值变化时重新初始化（settings 对象身份变化频繁，不应重复初始化） */
+  useEffect(() => (settings ? initTheme(settings.theme) : undefined), [settings?.theme]);
 
   /* 选中目录持久化 + 切换时回到顶部 */
   useEffect(() => {
@@ -147,6 +149,19 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  /* 搜索框置顶：时钟区完全滚出视口后给 dock 加 .stuck（窄屏避开悬浮控件 + 悬浮阴影） */
+  useEffect(() => {
+    const dock = dockRef.current;
+    const scroller = contentRef.current;
+    const hero = scroller?.querySelector('.hero');
+    if (!dock || !scroller || !hero) return;
+    const io = new IntersectionObserver(([entry]) => dock.classList.toggle('stuck', !entry.isIntersecting), {
+      root: scroller,
+    });
+    io.observe(hero);
+    return () => io.disconnect();
+  }, [settings, model]);
+
   /* 搜索派生状态 */
   const engineMode = isEngineQuery(query);
   const results = useMemo(() => {
@@ -162,6 +177,15 @@ export default function App() {
     : model && selectedId
       ? (model.linksByFolder.get(selectedId) ?? [])
       : [];
+
+  /* 搜索态进入 / 结果更新 / 退出搜索都回到顶部：否则结果被当前滚动位置
+     顶在视口外，用户以为"没搜到"（P2-2） */
+  const wasSearching = useRef(false);
+  useEffect(() => {
+    const searchingNow = results !== null;
+    if (searchingNow || wasSearching.current) contentRef.current?.scrollTo({ top: 0 });
+    wasSearching.current = searchingNow;
+  }, [results]);
 
   const handleSearchEnter = () => {
     if (!settings) return;
@@ -303,11 +327,12 @@ export default function App() {
             ✕
           </button>
         </div>
-        <div className="sidebar-scroll">
+        <div className="sidebar-scroll" ref={treeScrollRef}>
           <FolderTree
             roots={model.roots}
             selectedId={selectedId}
             expandDepth={settings.treeDefaultExpandDepth}
+            scrollParentRef={treeScrollRef}
             onSelect={(id) => {
               setSelectedId(id);
               setQuery('');
@@ -360,6 +385,10 @@ export default function App() {
         <div className="content" ref={contentRef}>
           <div className="hero">
             <Clock cfg={settings.clock} />
+          </div>
+
+          {/* 独立于时钟的 sticky 容器：下滑时搜索框固定在内容区顶部 */}
+          <div className="search-dock" ref={dockRef}>
             <SearchBox
               query={query}
               onChange={setQuery}

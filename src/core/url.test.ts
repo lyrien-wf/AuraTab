@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeUrl, navigateCurrent, safeHref } from './url';
+import { isSafeUrl, navigateCurrent } from './url';
 
 describe('URL 协议校验', () => {
   it('允许 http / https / ftp', () => {
@@ -25,10 +25,6 @@ describe('URL 协议校验', () => {
     expect(isSafeUrl('not a url')).toBe(false);
   });
 
-  it('safeHref：不安全链接返回 undefined', () => {
-    expect(safeHref('javascript:alert(1)')).toBeUndefined();
-    expect(safeHref('https://example.com')).toBe('https://example.com');
-  });
 
   it('navigateCurrent：不安全链接拒绝跳转', () => {
     expect(navigateCurrent('javascript:alert(1)')).toBe(false);

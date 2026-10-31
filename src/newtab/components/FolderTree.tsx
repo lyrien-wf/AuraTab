@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { FolderNode } from '../../core/types';
 
 interface FolderTreeProps {
   roots: FolderNode[];
   selectedId: string | null;
   expandDepth: number;
+  scrollParentRef: RefObject<HTMLDivElement>;
   onSelect: (folderId: string) => void;
 }
+
+/** 可见节点超过 300 时启用虚拟滚动（与书签网格同一阈值） */
+const VIRTUAL_THRESHOLD = 300;
+/** .tree-row 的固定行高（与 global.css 保持一致），供虚拟行估算 */
+const ROW_HEIGHT = 32;
 
 /** 初始展开集合：depth < expandDepth 的目录 */
 function initialExpanded(roots: FolderNode[], expandDepth: number): Set<string> {
@@ -22,7 +29,7 @@ function initialExpanded(roots: FolderNode[], expandDepth: number): Set<string> 
   return set;
 }
 
-/** 按展开状态 DFS 得到可见节点序列（键盘导航用） */
+/** 按展开状态 DFS 得到可见节点序列（扁平渲染与键盘导航共用） */
 function flattenVisible(roots: FolderNode[], expanded: Set<string>): FolderNode[] {
   const out: FolderNode[] = [];
   const walk = (nodes: FolderNode[]) => {
@@ -36,23 +43,87 @@ function flattenVisible(roots: FolderNode[], expanded: Set<string>): FolderNode[
 }
 
 /**
- * 左侧目录树：role=tree/treeitem，支持展开折叠、选中，
- * 键盘：↑/↓ 移动，→/← 展开折叠，Enter/Space 选中，Home/End 首尾。
+ * 左侧目录树：role=tree/treeitem，层级用扁平结构 + aria-level 表达；
+ * 支持展开折叠、选中，键盘：↑/↓ 移动，→/← 展开折叠，Enter/Space 选中，Home/End 首尾。
+ * 按 flattenVisible 扁平渲染（不再嵌套 ul），节点多时按行虚拟化，避免大树全量渲染（P2-3）。
  */
-export function FolderTree({ roots, selectedId, expandDepth, onSelect }: FolderTreeProps) {
+export function FolderTree({ roots, selectedId, expandDepth, scrollParentRef, onSelect }: FolderTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => initialExpanded(roots, expandDepth));
-  const itemRefs = useRef(new Map<string, HTMLLIElement>());
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
+  /** 按 id 缓存的稳定 ref 回调：避免每次渲染对所有行做 null→el 重挂（P2-3） */
+  const refCallbacks = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
+  const knownIds = useRef<Set<string> | null>(null);
   const pendingFocus = useRef<string | null>(null);
-
-  // 展开深度设置变化时重置展开状态
-  useEffect(() => {
-    setExpanded(initialExpanded(roots, expandDepth));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandDepth]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
 
   const flat = useMemo(() => flattenVisible(roots, expanded), [roots, expanded]);
+  const virtual = flat.length > VIRTUAL_THRESHOLD;
 
-  // 渲染后处理延迟聚焦（如展开后聚焦第一个子节点）
+  const virtualizer = useVirtualizer({
+    count: virtual ? flat.length : 0,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 8,
+    scrollMargin,
+    enabled: virtual,
+  });
+
+  /* 模型变化时增量对账展开状态：丢弃已删除目录的 id、按默认深度自动展开新增目录、
+     保留用户手动展开；顺带清理失效 id 的 ref 回调（P2-4） */
+  useEffect(() => {
+    const current = new Set<string>();
+    const fresh: string[] = [];
+    const walk = (nodes: FolderNode[]) => {
+      for (const n of nodes) {
+        current.add(n.id);
+        if (knownIds.current && !knownIds.current.has(n.id) && n.children.length > 0 && n.depth < expandDepth) {
+          fresh.push(n.id);
+        }
+        walk(n.children);
+      }
+    };
+    walk(roots);
+    const firstRun = knownIds.current === null;
+    knownIds.current = current;
+    for (const id of [...refCallbacks.current.keys()]) {
+      if (!current.has(id)) refCallbacks.current.delete(id);
+    }
+    if (firstRun) return;
+    setExpanded((prev) => {
+      const next = new Set<string>();
+      for (const id of prev) if (current.has(id)) next.add(id);
+      for (const id of fresh) next.add(id);
+      return next;
+    });
+  }, [roots, expandDepth]);
+
+  /* 展开深度设置变化时刻意整体重置（与上面的增量对账是两回事）；
+     依赖只有 expandDepth：roots 变化走对账，不走重置 */
+  useEffect(() => {
+    setExpanded(initialExpanded(roots, expandDepth));
+  }, [expandDepth]);
+
+  /* 虚拟容器在滚动容器内的偏移：尺寸变化与窗口 resize 都重算（P1-7 的教训） */
+  useEffect(() => {
+    if (!virtual) return;
+    const el = wrapRef.current;
+    const scroller = scrollParentRef.current;
+    if (!el || !scroller) return;
+    const compute = () => {
+      setScrollMargin(el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    window.addEventListener('resize', compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', compute);
+    };
+  }, [virtual, scrollParentRef]);
+
+  // 渲染后处理延迟聚焦（如展开后聚焦第一个子节点、虚拟滚动到位后聚焦目标行）
   useEffect(() => {
     if (pendingFocus.current) {
       itemRefs.current.get(pendingFocus.current)?.focus();
@@ -73,8 +144,15 @@ export function FolderTree({ roots, selectedId, expandDepth, onSelect }: FolderT
 
   const focusNode = (id?: string) => {
     if (!id) return;
-    if (itemRefs.current.get(id)) itemRefs.current.get(id)!.focus();
-    else pendingFocus.current = id;
+    const el = itemRefs.current.get(id);
+    if (el) {
+      el.focus();
+      return;
+    }
+    // 尚未渲染（刚展开或虚拟行在视口外）：先滚到可见范围，渲染后由 pendingFocus 聚焦
+    const idx = flat.findIndex((n) => n.id === id);
+    if (idx >= 0 && virtual) virtualizer.scrollToIndex(idx, { align: 'auto' });
+    pendingFocus.current = id;
   };
 
   const onKeyDown = (e: ReactKeyboardEvent) => {
@@ -124,56 +202,82 @@ export function FolderTree({ roots, selectedId, expandDepth, onSelect }: FolderT
     }
   };
 
-  const renderNodes = (nodes: FolderNode[]): ReactNode =>
-    nodes.map((node) => {
-      const hasChildren = node.children.length > 0;
-      const isOpen = expanded.has(node.id);
-      const selected = node.id === selectedId;
-      return (
-        <li
-          key={node.id}
-          role="treeitem"
-          aria-selected={selected}
-          aria-expanded={hasChildren ? isOpen : undefined}
-          aria-level={node.depth + 1}
-          data-folder-id={node.id}
-          tabIndex={node.id === activeId ? 0 : -1}
-          ref={(el) => {
-            if (el) itemRefs.current.set(node.id, el);
-            else itemRefs.current.delete(node.id);
-          }}
+  const itemRef = useCallback((id: string) => {
+    let cb = refCallbacks.current.get(id);
+    if (!cb) {
+      cb = (el: HTMLDivElement | null) => {
+        if (el) itemRefs.current.set(id, el);
+        else itemRefs.current.delete(id);
+      };
+      refCallbacks.current.set(id, cb);
+    }
+    return cb;
+  }, []);
+
+  const renderRow = (node: FolderNode): ReactNode => {
+    const hasChildren = node.children.length > 0;
+    const isOpen = expanded.has(node.id);
+    const selected = node.id === selectedId;
+    return (
+      <div
+        key={node.id}
+        role="treeitem"
+        aria-selected={selected}
+        aria-expanded={hasChildren ? isOpen : undefined}
+        aria-level={node.depth + 1}
+        data-folder-id={node.id}
+        tabIndex={node.id === activeId ? 0 : -1}
+        ref={itemRef(node.id)}
+      >
+        <div
+          className={`tree-row${selected ? ' selected' : ''}`}
+          style={{ paddingLeft: 8 + node.depth * 14 }}
+          onClick={() => onSelect(node.id)}
+          onDoubleClick={() => hasChildren && toggle(node.id)}
         >
-          <div
-            className={`tree-row${selected ? ' selected' : ''}`}
-            style={{ paddingLeft: 8 + node.depth * 14 }}
-            onClick={() => onSelect(node.id)}
-            onDoubleClick={() => hasChildren && toggle(node.id)}
+          <span
+            className={`chevron${hasChildren ? '' : ' hidden'}${isOpen ? ' open' : ''}`}
+            aria-hidden="true"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle(node.id);
+            }}
           >
-            <span
-              className={`chevron${hasChildren ? '' : ' hidden'}${isOpen ? ' open' : ''}`}
-              aria-hidden="true"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle(node.id);
-              }}
-            >
-              ▸
-            </span>
-            <span className="tree-title" title={node.title}>
-              {node.title}
-            </span>
-            {node.linkCount > 0 && <span className="tree-badge">{node.linkCount}</span>}
-          </div>
-          {hasChildren && isOpen && <ul role="group" className="tree-group">{renderNodes(node.children)}</ul>}
-        </li>
-      );
-    });
+            ▸
+          </span>
+          <span className="tree-title" title={node.title}>
+            {node.title}
+          </span>
+          {node.linkCount > 0 && <span className="tree-badge">{node.linkCount}</span>}
+        </div>
+      </div>
+    );
+  };
 
   if (roots.length === 0) return null;
 
   return (
-    <ul role="tree" aria-label="收藏夹目录树" className="tree" onKeyDown={onKeyDown}>
-      {renderNodes(roots)}
-    </ul>
+    <div role="tree" aria-label="收藏夹目录树" className="tree" onKeyDown={onKeyDown}>
+      {virtual ? (
+        <div ref={wrapRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+          {virtualizer.getVirtualItems().map((vRow) => (
+            <div
+              key={vRow.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vRow.start - scrollMargin}px)`,
+              }}
+            >
+              {renderRow(flat[vRow.index])}
+            </div>
+          ))}
+        </div>
+      ) : (
+        flat.map(renderRow)
+      )}
+    </div>
   );
 }

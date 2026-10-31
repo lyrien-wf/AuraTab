@@ -39,7 +39,8 @@ export default function PopupApp() {
     };
   }, [bootNonce]);
 
-  useEffect(() => (settings ? initTheme(settings.theme) : undefined), [settings?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 主题：只在主题值变化时重新初始化（settings 对象身份变化频繁，不应重复初始化）
+  useEffect(() => (settings ? initTheme(settings.theme) : undefined), [settings?.theme]);
 
   if (loadError) {
     return (

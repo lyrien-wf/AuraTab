@@ -58,6 +58,8 @@ export async function loadSnapshot(): Promise<BookmarkModel | null> {
     return null;
   }
   if (!snap || snap.v !== 1) return null;
+  // 形状校验：字段缺失/类型不对的脏快照直接丢弃，避免 revive 出空模型闪一屏空态
+  if (!Array.isArray(snap.roots) || !Array.isArray(snap.links) || !Array.isArray(snap.allLinks)) return null;
   try {
     return reviveModel(snap);
   } catch {

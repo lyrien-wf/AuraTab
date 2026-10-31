@@ -66,11 +66,11 @@ export default function OptionsApp() {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 依赖是 rootsKey（勾选根的序列化）而非 draft 对象身份：草稿其他字段变化不应重拉候选目录
   }, [rootsKey]);
 
-  // 主题实时预览
-  useEffect(() => (draft ? initTheme(draft.theme) : undefined), [draft?.theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 主题实时预览：只在主题值变化时重新初始化
+  useEffect(() => (draft ? initTheme(draft.theme) : undefined), [draft?.theme]);
 
   useEffect(() => {
     if (!saved) return;

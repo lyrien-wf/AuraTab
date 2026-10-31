@@ -22,6 +22,11 @@ export function BookmarkCard({ link, allowFileUrls, onContextMenu }: BookmarkCar
       <a
         className={`card${safe ? '' : ' blocked'}`}
         href={safe ? link.url : undefined}
+        /* 无 href 的 <a> 默认不可聚焦、无 link 语义：补 role/tabIndex/aria-disabled，
+           被拦截的卡片键盘可达、读屏能播报"不可用"（P2-6） */
+        role="link"
+        tabIndex={safe ? undefined : 0}
+        aria-disabled={safe ? undefined : true}
         title={`${link.title}\n${link.url}`}
         aria-label={displayTitle}
         onClick={(e) => {

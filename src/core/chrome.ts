@@ -35,10 +35,6 @@ export function hasStorage(): boolean {
   return !!c?.storage?.local && !!c?.storage?.sync;
 }
 
-export function isExtension(): boolean {
-  return hasBookmarks();
-}
-
 /* ---------------------------------- 书签 ---------------------------------- */
 
 /** 开发用演示书签树（仅在非扩展环境使用） */
@@ -146,14 +142,6 @@ export async function storageSet(area: StorageArea, key: string, value: unknown)
     return;
   }
   memoryStore[area].set(key, value);
-}
-
-export async function storageRemove(area: StorageArea, key: string): Promise<void> {
-  if (hasStorage()) {
-    await chromeGlobal()!.storage[area].remove(key);
-    return;
-  }
-  memoryStore[area].delete(key);
 }
 
 /** 测试辅助：清空内存降级存储 */

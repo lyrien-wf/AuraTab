@@ -372,6 +372,24 @@ kbd {
   gap: 18px;
 }
 
+/* 搜索框置顶：随页面流排在时钟下方；时钟区滚出后吸附在滚动容器顶部，
+   背景遮住从下方滚过的卡片。top 取负值抵消 margin，使吸附时背景正好齐顶 */
+.search-dock {
+  position: sticky;
+  top: -10px;
+  z-index: 10;
+  margin-top: 10px;
+  padding: 10px 0 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: var(--bg);
+}
+.search-dock.stuck .searchbox {
+  box-shadow: var(--shadow);
+}
+
 /* 抽屉相关元素默认隐藏，窄屏启用 */
 .drawer-only {
   display: none !important;
@@ -423,6 +441,10 @@ kbd {
   .hero {
     padding-top: max(56px, 12vh);
   }
+  /* 窄屏置顶时两侧收进，避开悬浮的汉堡按钮与每行卡片数下拉 */
+  .search-dock.stuck .search-wrap {
+    width: calc(100% - 140px);
+  }
 }
 
 /* ---------------- 时钟 ---------------- */
@@ -458,6 +480,7 @@ kbd {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  transition: width 0.18s ease;
 }
 
 .searchbox {
@@ -593,17 +616,11 @@ kbd {
 
 /* ---------------- 目录树 ---------------- */
 
-ul.tree,
-ul.tree-group {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.tree li[role='treeitem'] {
+/* 目录树扁平渲染（div + aria-level），不再有嵌套 ul */
+.tree [role='treeitem'] {
   outline: none;
 }
-.tree li[role='treeitem']:focus-visible > .tree-row {
+.tree [role='treeitem']:focus-visible > .tree-row {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -612,6 +629,7 @@ ul.tree-group {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: 32px; /* 固定行高：虚拟滚动按此估算（FolderTree ROW_HEIGHT） */
   padding: 6px 8px;
   border-radius: 8px;
   cursor: pointer;
@@ -838,6 +856,11 @@ ul.tree-group {
 .ctx-menu button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.ctx-warn {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--muted);
 }
 .ctx-url {
   padding: 6px 10px 4px;

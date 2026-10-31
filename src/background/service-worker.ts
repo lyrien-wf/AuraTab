@@ -16,15 +16,25 @@ function notifyDirty(): void {
   }, 300);
 }
 
-const events = [
-  chrome.bookmarks.onCreated,
-  chrome.bookmarks.onRemoved,
-  chrome.bookmarks.onChanged,
-  chrome.bookmarks.onMoved,
-  chrome.bookmarks.onChildrenReordered,
-  chrome.bookmarks.onImportEnded,
+/* 逐个防御注册：任一事件 API 缺失（内核裁剪 / API 变更）只跳过该事件并告警，
+   不再让整段脚本抛错导致后台彻底失效（P2-8） */
+interface ListenableEvent {
+  addListener(cb: () => void): void;
+}
+
+const events: [string, ListenableEvent | undefined][] = [
+  ['onCreated', chrome.bookmarks?.onCreated],
+  ['onRemoved', chrome.bookmarks?.onRemoved],
+  ['onChanged', chrome.bookmarks?.onChanged],
+  ['onMoved', chrome.bookmarks?.onMoved],
+  ['onChildrenReordered', chrome.bookmarks?.onChildrenReordered],
+  ['onImportEnded', chrome.bookmarks?.onImportEnded],
 ];
 
-for (const event of events) {
-  event.addListener(notifyDirty);
+for (const [name, event] of events) {
+  if (event?.addListener) {
+    event.addListener(notifyDirty);
+  } else {
+    console.warn(`[AuraTab] chrome.bookmarks.${name} 不可用，已跳过该事件的实时同步监听`);
+  }
 }
