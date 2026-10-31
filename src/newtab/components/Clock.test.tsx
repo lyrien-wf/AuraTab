@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { Clock } from './Clock';
 
-/** 刷新时机（P2-1 修复验证）：对齐墙钟边界，分钟准点跳变、不提前不迟到 */
+/** 刷新时机：对齐墙钟边界，分钟准点跳变、不提前不迟到 */
 describe('Clock 刷新时机', () => {
   afterEach(() => {
     cleanup();

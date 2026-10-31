@@ -16,8 +16,7 @@ function notifyDirty(): void {
   }, 300);
 }
 
-/* 逐个防御注册：任一事件 API 缺失（内核裁剪 / API 变更）只跳过该事件并告警，
-   不再让整段脚本抛错导致后台彻底失效（P2-8） */
+/* 逐个防御注册：缺少某个事件 API 时只跳过并告警，避免整段脚本抛错使后台失效 */
 interface ListenableEvent {
   addListener(cb: () => void): void;
 }

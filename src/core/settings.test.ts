@@ -34,7 +34,7 @@ describe('loadSettings', () => {
     expect(mock.store.local.get('settings')).toBeTruthy();
   });
 
-  it('sync 里的遗留设置一次性迁移到 local 并清理 sync 键（P1-1）', async () => {
+  it('sync 里的遗留设置一次性迁移到 local 并清理 sync 键', async () => {
     mock = installChromeMock({ tree: TREE, syncData: { settings: { enabledRootIds: ['1'], searchEngine: 'google' } } });
     const s = await loadSettings();
     expect(s.searchEngine).toBe('google');

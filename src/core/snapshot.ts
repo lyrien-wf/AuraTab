@@ -1,13 +1,6 @@
 /**
- * 模型快照缓存（chrome.storage.local）。
- * 首次渲染前读取上次快照先行渲染，再用真实数据替换，消除白屏。
- *
- * v2（P1-2 修复）：
- * - 去掉 allLinks（回读时由 links 合并推导），序列化体积减半；
- * - 记录 rootsKey（勾选根 + 空目录可见性指纹）与 savedAt：指纹不符或超期（7 天）
- *   直接丢弃，改完设置不再闪一屏旧目录；
- * - 序列化结果超过 2MB 跳过写入，不挤占 storage.local 配额（约 10MB）；
- * - 旧 v1 快照（无指纹、无时间戳、allLinks 重复存储）不再读取，v2 写入成功后顺手清除。
+ * 模型快照缓存（chrome.storage.local）：首屏先渲染上次快照，再用真实数据替换。
+ * 快照带作用域指纹与写入时间，不匹配或超期即丢弃；体积超限不写入；旧版数据不再读取。
  */
 import { storageGet, storageRemove, storageSet } from './chrome';
 import type { BookmarkModel, FolderNode, LinkNode, Settings } from './types';
@@ -35,7 +28,7 @@ export interface UIState {
   lastFolderId?: string;
 }
 
-/** 快照只对"相同的勾选根 + 空目录可见性"有意义，二者构成指纹 */
+/** 快照指纹：勾选根 + 空目录可见性 */
 function scopeKey(scope: Pick<Settings, 'enabledRootIds' | 'showEmptyFolders'>): string {
   return `${[...scope.enabledRootIds].sort().join(',')}|${scope.showEmptyFolders ? 1 : 0}`;
 }
@@ -73,8 +66,7 @@ export function reviveModel(snapshot: ModelSnapshot): BookmarkModel {
 }
 
 /**
- * 读取快照。指纹不符、超期、版本不符、形状不对一律返回 null（走真实加载），
- * 绝不向上抛错 —— 否则存储异常会把新标签页的启动流程一起拖死。
+ * 读取快照；指纹不符、超期、版本不符或形状不对一律返回 null。
  */
 export async function loadSnapshot(
   scope: Pick<Settings, 'enabledRootIds' | 'showEmptyFolders'>,
@@ -102,11 +94,11 @@ export async function saveSnapshot(
   scope: Pick<Settings, 'enabledRootIds' | 'showEmptyFolders'>,
 ): Promise<void> {
   const snapshot = serializeModel(model, scope);
-  // 超大模型不进缓存：既拖慢每个新标签页的首屏解析，也会挤占配额
+  // 超大模型不写入缓存，避免首屏解析过慢与配额占用
   if (JSON.stringify(snapshot).length > MAX_SNAPSHOT_BYTES) return;
   try {
     await storageSet('local', SNAPSHOT_KEY, snapshot);
-    // 旧版快照已无读取路径，写入成功后清掉孤立项（不存在时为 no-op）
+    // 清理旧版快照（不存在时为 no-op）
     void storageRemove('local', LEGACY_SNAPSHOT_KEY);
   } catch {
     // 快照超出配额等情况不影响主流程，静默放弃缓存
@@ -123,8 +115,7 @@ export async function loadUI(): Promise<UIState> {
 }
 
 /**
- * 写入串行化队列：saveUI 是"读-改-写"，两次并发写入会在 loadUI 与 storageSet
- * 之间交错、互相覆盖丢字段（P1-4）。按调用顺序排队，前一次落盘后才开始下一次。
+ * 写入串行化队列：避免两次"读-改-写"交错互相覆盖，按调用顺序排队执行。
  */
 let uiWriteQueue: Promise<void> = Promise.resolve();
 

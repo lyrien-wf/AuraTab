@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
-// Service Worker 单独构建：MV3 要求经典脚本（非 module），故输出 iife 格式，
-// 且不清空 dist（在页面构建之后运行）。
+// Service Worker 单独构建：MV3 要求经典脚本（非 module），故输出 iife；
+// emptyOutDir 为 false，必须跑在页面构建之后。
 export default defineConfig({
   build: {
     outDir: 'dist',

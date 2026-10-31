@@ -1,11 +1,7 @@
 /**
- * 设置读写与默认值（chrome.storage.local，仅存本机、不跨设备）。
- * 首次运行默认勾选第一个根文件夹（Chrome「书签栏」/ Edge「收藏夹栏」），
- * 之后尊重用户选择 —— 包括刻意清空所有勾选（主页会显示引导空态）。
- *
- * 历史上存 storage.sync，但 defaultFolderId 等字段持有设备本地的书签 id，
- * 跨设备同步会让另一台设备静默选中错误目录（P1-1）；跨设备传递设置并非需求，
- * 故整体改存 local，读取时对遗留的 sync 数据做一次迁移。
+ * 设置读写与默认值（chrome.storage.local，仅存本机）。
+ * 首次运行默认勾选第一个根文件夹，之后尊重用户选择（含刻意清空全部勾选）。
+ * 旧版本存于 storage.sync，读取时会把遗留数据迁移到 local。
  */
 import { hasStorage, storageGet, storageRemove, storageSet } from './chrome';
 import { listRootFolders } from './bookmarks';
@@ -107,9 +103,8 @@ export function mergeSettings(stored: Partial<Settings>): Settings {
 }
 
 /**
- * 比较影响书签模型的字段（勾选的根目录、空目录可见性）。
- * 设置变更时据此决定是否需要重载全树：其余字段（主题 / 引擎 / 每行卡片数等）
- * 以及页面自己写 sync 触发的"回声"，都不该再跑一次 getTree（P1-5）。
+ * 比较影响书签模型的字段（勾选的根目录、空目录可见性），
+ * 用于决定设置变更时是否需要重载全树。
  */
 export function affectsBookmarkModel(prev: Settings, next: Settings): boolean {
   return (
@@ -128,7 +123,7 @@ export async function loadSettings(): Promise<Settings> {
   const stored = await storageGet<Partial<Settings>>('local', SETTINGS_KEY);
   if (hasStoredSettings(stored)) return mergeSettings(stored);
 
-  // 一次性迁移：旧版本把设置存在 sync（P1-1），搬回 local 并清掉 sync 孤儿键
+  // 一次性迁移：旧版本设置存在 sync，搬回 local 并清理
   const legacy = await storageGet<Partial<Settings>>('sync', SETTINGS_KEY);
   if (hasStoredSettings(legacy)) {
     const merged = mergeSettings(legacy);

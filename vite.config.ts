@@ -20,8 +20,8 @@ export default defineConfig({
         options: 'options.html',
         popup: 'popup.html',
       },
-      // 固定产物文件名（去 hash）：扩展资源从本地磁盘加载，不需要缓存指纹；
-      // 重建时同名覆盖，不再出现"旧标签页 / 旧 HTML 缓存请求已删除的哈希文件 → 白屏"（P2-11）
+      // 固定产物文件名（去 hash）：扩展资源从本地加载，无需缓存指纹；
+      // 重建时同名覆盖，避免旧页面请求已删除的哈希文件
       output: {
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
@@ -30,7 +30,7 @@ export default defineConfig({
     },
   },
   test: {
-    // 默认 node；组件测试在文件头用 `// @vitest-environment jsdom` 按需切换（P2-13）
+    // 默认 node；组件测试在文件头用 `// @vitest-environment jsdom` 按需切换
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },

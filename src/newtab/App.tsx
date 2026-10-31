@@ -105,8 +105,7 @@ export default function App() {
       const prev = settingsRef.current;
       setSettings(s);
       settingsRef.current = s;
-      // 仅当影响书签模型的字段变化时才重载全树：页面自己写 sync 的"回声"
-      // 与主题 / 引擎 / 每行卡片数等无关设置不再多跑一次 getTree（P1-5）
+      // 仅当影响书签模型的字段变化时才重载全树；其余设置与自身写入的回声只更新状态
       if (!prev || affectsBookmarkModel(prev, s)) void reloadModel(s);
     });
     return () => {
@@ -178,8 +177,7 @@ export default function App() {
       ? (model.linksByFolder.get(selectedId) ?? [])
       : [];
 
-  /* 搜索态进入 / 结果更新 / 退出搜索都回到顶部：否则结果被当前滚动位置
-     顶在视口外，用户以为"没搜到"（P2-2） */
+  /* 搜索态进入 / 结果更新 / 退出搜索都回到顶部，避免结果被滚动位置顶出视口 */
   const wasSearching = useRef(false);
   useEffect(() => {
     const searchingNow = results !== null;
@@ -206,9 +204,7 @@ export default function App() {
     location.href = buildSearchUrl(settings, raw);
   };
 
-  /* 侧栏拖拽调宽（240–420，宽度存 storage.local）。
-     用 Pointer Capture：指针移出窗口外松开、Alt+Tab 或被系统手势打断时
-     也能收到 pointerup / pointercancel，监听与 userSelect 不再残留（P1-3） */
+  /* 侧栏拖拽调宽（240–420）。用 Pointer Capture 保证指针移出窗口或被中断时也能正常收尾 */
   const startResize = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     const el = e.currentTarget;

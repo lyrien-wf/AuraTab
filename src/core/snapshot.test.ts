@@ -9,7 +9,7 @@ import type { LinkNode } from './types';
  * saveUI 走 chrome.ts 的内存降级存储（测试环境未安装 chrome mock），
  * 配合 resetMemoryStore 隔离用例。
  */
-describe('saveUI 写入串行化（P1-4）', () => {
+describe('saveUI 写入串行化', () => {
   beforeEach(() => {
     resetMemoryStore();
   });
@@ -38,7 +38,7 @@ describe('saveUI 写入串行化（P1-4）', () => {
   });
 });
 
-/** 快照 v2 往返、指纹 / 过期 / 体积门禁与旧版清理（P1-2 + P2-13 覆盖） */
+/** 快照往返、指纹 / 过期 / 体积门禁与旧版清理 */
 describe('快照往返与降级（v2）', () => {
   const SCOPE = { enabledRootIds: ['1'], showEmptyFolders: false };
   const TREE: BookmarkTreeNode[] = [

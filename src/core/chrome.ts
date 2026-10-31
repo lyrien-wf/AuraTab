@@ -1,10 +1,6 @@
 /**
- * chrome API 适配层。
- *
- * - 在扩展环境中直接透传 chrome.*；
- * - 在开发预览（vite dev）与测试环境中降级为演示数据 / 内存存储，
- *   使 `npm run dev` 无需加载扩展即可预览页面；
- * - 生产构建在非扩展环境下显式抛错（getTree），不把故障伪装成演示数据。
+ * chrome API 适配层：扩展环境透传 chrome.*；
+ * 开发预览与测试环境降级为演示数据 / 内存存储；生产环境缺少 API 时显式抛错。
  */
 import { BOOKMARKS_DIRTY } from './types';
 
@@ -114,9 +110,7 @@ export async function getTree(): Promise<BookmarkTreeNode[]> {
     const c = chromeGlobal()!;
     return (await c.bookmarks.getTree()) as unknown as BookmarkTreeNode[];
   }
-  // 演示数据只服务于开发预览（npm run dev）与测试环境；生产构建里缺
-  // chrome.bookmarks 属于真实故障，显式抛错交给 BootError 展示原因，
-  // 不再用假书签把故障伪装成正常状态（P1-6）
+  // 演示数据仅用于开发预览；生产环境缺少书签 API 属于真实故障，显式抛错交给 BootError
   if (import.meta.env.DEV) return DEMO_TREE;
   throw new Error('chrome.bookmarks API 不可用：请通过浏览器「加载解压缩的扩展」方式使用 AuraTab');
 }
@@ -144,7 +138,7 @@ export async function storageSet(area: StorageArea, key: string, value: unknown)
   memoryStore[area].set(key, value);
 }
 
-/** 删除存储键（快照 v1→v2 迁移清理用；键不存在时为 no-op） */
+/** 删除存储键（v1→v2 迁移清理用） */
 export async function storageRemove(area: StorageArea, key: string): Promise<void> {
   if (hasStorage()) {
     await chromeGlobal()!.storage[area].remove(key);

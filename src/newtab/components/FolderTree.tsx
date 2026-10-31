@@ -43,14 +43,13 @@ function flattenVisible(roots: FolderNode[], expanded: Set<string>): FolderNode[
 }
 
 /**
- * 左侧目录树：role=tree/treeitem，层级用扁平结构 + aria-level 表达；
- * 支持展开折叠、选中，键盘：↑/↓ 移动，→/← 展开折叠，Enter/Space 选中，Home/End 首尾。
- * 按 flattenVisible 扁平渲染（不再嵌套 ul），节点多时按行虚拟化，避免大树全量渲染（P2-3）。
+ * 左侧目录树：role=tree/treeitem + aria-level 表达层级，支持展开折叠、选中与键盘导航
+ * （↑/↓ 移动，→/← 展开折叠，Enter/Space 选中，Home/End 首尾）；节点多时按行虚拟化。
  */
 export function FolderTree({ roots, selectedId, expandDepth, scrollParentRef, onSelect }: FolderTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(() => initialExpanded(roots, expandDepth));
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
-  /** 按 id 缓存的稳定 ref 回调：避免每次渲染对所有行做 null→el 重挂（P2-3） */
+  /** 按 id 缓存的稳定 ref 回调，避免每次渲染重挂全部行 */
   const refCallbacks = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
   const knownIds = useRef<Set<string> | null>(null);
   const pendingFocus = useRef<string | null>(null);
@@ -69,8 +68,7 @@ export function FolderTree({ roots, selectedId, expandDepth, scrollParentRef, on
     enabled: virtual,
   });
 
-  /* 模型变化时增量对账展开状态：丢弃已删除目录的 id、按默认深度自动展开新增目录、
-     保留用户手动展开；顺带清理失效 id 的 ref 回调（P2-4） */
+  /* 模型变化时对账展开状态：清理失效 id、按默认深度展开新增目录、保留手动展开 */
   useEffect(() => {
     const current = new Set<string>();
     const fresh: string[] = [];
@@ -98,13 +96,12 @@ export function FolderTree({ roots, selectedId, expandDepth, scrollParentRef, on
     });
   }, [roots, expandDepth]);
 
-  /* 展开深度设置变化时刻意整体重置（与上面的增量对账是两回事）；
-     依赖只有 expandDepth：roots 变化走对账，不走重置 */
+  /* 展开深度设置变化时整体重置（roots 变化走对账） */
   useEffect(() => {
     setExpanded(initialExpanded(roots, expandDepth));
   }, [expandDepth]);
 
-  /* 虚拟容器在滚动容器内的偏移：尺寸变化与窗口 resize 都重算（P1-7 的教训） */
+  /* 虚拟容器在滚动容器内的偏移：尺寸变化与窗口 resize 时重算 */
   useEffect(() => {
     if (!virtual) return;
     const el = wrapRef.current;
@@ -149,7 +146,7 @@ export function FolderTree({ roots, selectedId, expandDepth, scrollParentRef, on
       el.focus();
       return;
     }
-    // 尚未渲染（刚展开或虚拟行在视口外）：先滚到可见范围，渲染后由 pendingFocus 聚焦
+    // 未渲染（刚展开或在视口外）：先滚动到可见范围，渲染后聚焦
     const idx = flat.findIndex((n) => n.id === id);
     if (idx >= 0 && virtual) virtualizer.scrollToIndex(idx, { align: 'auto' });
     pendingFocus.current = id;

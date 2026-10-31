@@ -15,7 +15,7 @@ const link = (url: string): LinkNode => ({
   domain: 'example.com',
 });
 
-/** 被拦截卡片的可达性（P2-6 修复验证） */
+/** 被拦截卡片的可达性 */
 describe('BookmarkCard 拦截态无障碍', () => {
   it('安全链接：有 href、无 aria-disabled', () => {
     render(

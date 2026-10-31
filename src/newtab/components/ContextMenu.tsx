@@ -54,7 +54,7 @@ export function ContextMenu({ x, y, link, allowFileUrls, onClose, onToast }: Con
       </button>
       <button
         role="menuitem"
-        /* 与「在新标签页打开」一致：被拦截的伪协议 URL 不允许一键复制到别处（P2-7） */
+        /* 被拦截的伪协议 URL 不允许一键复制 */
         disabled={!safe}
         onClick={async () => {
           try {

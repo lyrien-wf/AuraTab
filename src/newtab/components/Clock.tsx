@@ -4,9 +4,7 @@ import type { ClockSettings } from '../../core/types';
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
 /**
- * 时间显示：刷新对齐到墙钟边界（P2-1）——
- * 显示秒时对齐每一秒；不显示秒时对齐整分钟，分钟准点跳变，
- * 不再是"20 秒轮询、分钟最多迟到 20 秒"，唤醒次数反而更少。
+ * 时间显示：刷新对齐墙钟边界（显示秒 → 每整秒；不显示秒 → 每整分钟）。
  */
 export function Clock({ cfg }: { cfg: ClockSettings }) {
   const [now, setNow] = useState(() => new Date());

@@ -1,8 +1,6 @@
 /**
- * 构建前把 package.json 的 version 写入 public/manifest.json（P2-10）。
- * npm 生态对外版本在 package.json，扩展对外版本在 manifest.json，
- * 此前两处手工维护，漏改即"发布版本 ≠ 仓库版本"；package-lock.json 由 npm 自行维护。
- * 幂等：一致时不做任何写入。
+ * 构建前把 package.json 的 version 同步到 public/manifest.json，保持对外版本一致。
+ * 幂等：一致时不写入。
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

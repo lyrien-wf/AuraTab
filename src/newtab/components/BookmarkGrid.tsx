@@ -26,9 +26,8 @@ export function BookmarkGrid(props: BookmarkGridProps) {
 }
 
 /**
- * 固定列数时不写死 `repeat(n, minmax(0,1fr))`：轨道下限取「148px 设计下限」与
- * 「均分成 n 列所需宽度」的较大值，配 auto-fill —— 宽度够时正好 n 列，
- * 窄窗口自动降列，卡片不再被压到 148px 以下裁切标题（P2-5）
+ * 固定列数：轨道下限取「148px」与「均分 n 列宽度」的较大值，配合 auto-fill，
+ * 宽窗口正好 n 列，窄窗口自动降列。
  */
 function gridColumns(perRow: Settings['cardsPerRowHint']): CSSProperties {
   if (perRow === 'auto') return {};
@@ -73,9 +72,8 @@ function VirtualGrid({ links, perRow, allowFileUrls, openInNewTab, scrollParentR
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(el);
-    // 窗口高度变化会改变 .hero 的 12vh 内边距 → el.offsetTop 变了，但网格自身
-    // 尺寸没变，ResizeObserver 不触发 —— 补 window.resize 兜底重算，
-    // 否则 scrollMargin 过期导致整片行错位（P1-7）
+    // 窗口高度变化会改变网格 offsetTop，但自身尺寸不变，ResizeObserver 不触发，
+    // 因此补 window.resize 兜底重算
     window.addEventListener('resize', compute);
     return () => {
       ro.disconnect();
