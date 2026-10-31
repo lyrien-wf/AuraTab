@@ -3,13 +3,40 @@ import type { ClockSettings } from '../../core/types';
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
-/** 时间显示：每秒（显示秒时）或每 20 秒刷新 */
+/**
+ * 时间显示：刷新对齐到墙钟边界（P2-1）——
+ * 显示秒时对齐每一秒；不显示秒时对齐整分钟，分钟准点跳变，
+ * 不再是"20 秒轮询、分钟最多迟到 20 秒"，唤醒次数反而更少。
+ */
 export function Clock({ cfg }: { cfg: ClockSettings }) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), cfg.showSeconds ? 1000 : 20_000);
-    return () => clearInterval(interval);
+    let timer: ReturnType<typeof setTimeout>;
+
+    // 递归 setTimeout 并每次按当前时间重新对齐边界，避免累积漂移
+    const schedule = () => {
+      clearTimeout(timer);
+      const period = cfg.showSeconds ? 1000 : 60_000;
+      timer = setTimeout(() => {
+        setNow(new Date());
+        schedule();
+      }, period - (Date.now() % period));
+    };
+    schedule();
+
+    // 后台标签页定时器会被节流，切回前台时立即刷新一次并重新对齐
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      setNow(new Date());
+      schedule();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [cfg.showSeconds]);
 
   const time = now.toLocaleTimeString('zh-CN', {
