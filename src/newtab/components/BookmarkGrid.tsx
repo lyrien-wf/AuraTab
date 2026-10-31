@@ -58,7 +58,14 @@ function VirtualGrid({ links, perRow, allowFileUrls, scrollParentRef, onCardCont
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(el);
-    return () => ro.disconnect();
+    // 窗口高度变化会改变 .hero 的 12vh 内边距 → el.offsetTop 变了，但网格自身
+    // 尺寸没变，ResizeObserver 不触发 —— 补 window.resize 兜底重算，
+    // 否则 scrollMargin 过期导致整片行错位（P1-7）
+    window.addEventListener('resize', compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', compute);
+    };
   }, [perRow]);
 
   const rowCount = Math.ceil(links.length / cols);

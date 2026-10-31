@@ -100,6 +100,19 @@ export function mergeSettings(stored: Partial<Settings>): Settings {
   return { ...(raw as Partial<Settings>), ...normalized };
 }
 
+/**
+ * 比较影响书签模型的字段（勾选的根目录、空目录可见性）。
+ * 设置变更时据此决定是否需要重载全树：其余字段（主题 / 引擎 / 每行卡片数等）
+ * 以及页面自己写 sync 触发的"回声"，都不该再跑一次 getTree（P1-5）。
+ */
+export function affectsBookmarkModel(prev: Settings, next: Settings): boolean {
+  return (
+    prev.showEmptyFolders !== next.showEmptyFolders ||
+    prev.enabledRootIds.length !== next.enabledRootIds.length ||
+    prev.enabledRootIds.some((id, i) => id !== next.enabledRootIds[i])
+  );
+}
+
 /** 存储里存在"设置"且是普通对象才算已初始化；脏值（数字/字符串/数组等）按首次运行处理 */
 function hasStoredSettings(stored: unknown): stored is Partial<Settings> {
   return !!stored && typeof stored === 'object' && !Array.isArray(stored);

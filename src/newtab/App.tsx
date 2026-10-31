@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { loadModel } from '../core/bookmarks';
 import { onBookmarksDirty, openOptionsPage } from '../core/chrome';
 import { ENGINE_LABELS, buildSearchUrl, isEngineQuery, searchLinks, stripEnginePrefix } from '../core/search';
-import { loadSettings, onSettingsChanged, saveSettings } from '../core/settings';
+import { affectsBookmarkModel, loadSettings, onSettingsChanged, saveSettings } from '../core/settings';
 import { loadSnapshot, loadUI, saveSnapshot, saveUI } from '../core/snapshot';
 import { initTheme } from '../core/theme';
 import type { BookmarkModel, LinkNode, Settings } from '../core/types';
@@ -100,9 +100,12 @@ export default function App() {
       if (s) void reloadModel(s);
     });
     const offSettings = onSettingsChanged((s) => {
+      const prev = settingsRef.current;
       setSettings(s);
       settingsRef.current = s;
-      void reloadModel(s);
+      // 仅当影响书签模型的字段变化时才重载全树：页面自己写 sync 的"回声"
+      // 与主题 / 引擎 / 每行卡片数等无关设置不再多跑一次 getTree（P1-5）
+      if (!prev || affectsBookmarkModel(prev, s)) void reloadModel(s);
     });
     return () => {
       offDirty();
@@ -177,24 +180,31 @@ export default function App() {
     location.href = buildSearchUrl(settings, raw);
   };
 
-  /* 侧栏拖拽调宽（240–420，宽度存 storage.local） */
-  const startResize = (e: ReactMouseEvent) => {
+  /* 侧栏拖拽调宽（240–420，宽度存 storage.local）。
+     用 Pointer Capture：指针移出窗口外松开、Alt+Tab 或被系统手势打断时
+     也能收到 pointerup / pointercancel，监听与 userSelect 不再残留（P1-3） */
+  const startResize = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
     const startX = e.clientX;
     const startW = sidebarWidth;
     let latest = startW;
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: PointerEvent) => {
       latest = clampWidth(startW + ev.clientX - startX);
       setSidebarWidth(latest);
     };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+    const onUp = (ev: PointerEvent) => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      if (el.hasPointerCapture(ev.pointerId)) el.releasePointerCapture(ev.pointerId);
       document.body.style.userSelect = '';
       void saveUI({ sidebarWidth: latest });
     };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
     document.body.style.userSelect = 'none';
   };
 
@@ -318,7 +328,7 @@ export default function App() {
         </div>
       </aside>
 
-      <div className="resizer" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
+      <div className="resizer" onPointerDown={startResize} role="separator" aria-orientation="vertical" />
       <div className="drawer-overlay" onClick={() => setDrawerOpen(false)} />
 
       <main className="main">

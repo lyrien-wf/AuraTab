@@ -3,7 +3,7 @@ import { installChromeMock, type ChromeMock } from '../test/mock-chrome';
 import type { BookmarkTreeNode } from './chrome';
 import { buildModel, loadModel } from './bookmarks';
 import { buildSearchUrl } from './search';
-import { DEFAULT_SETTINGS, loadSettings, mergeSettings, saveSettings } from './settings';
+import { DEFAULT_SETTINGS, affectsBookmarkModel, loadSettings, mergeSettings, saveSettings } from './settings';
 import type { Settings } from './types';
 
 const TREE: BookmarkTreeNode[] = [
@@ -148,5 +148,26 @@ describe('saveSettings', () => {
     expect(again.searchEngine).toBe('baidu');
     expect(again.treeDefaultExpandDepth).toBe(2);
     expect(again.enabledRootIds).toEqual(['1']);
+  });
+});
+
+describe('affectsBookmarkModel', () => {
+  const base: Settings = { ...DEFAULT_SETTINGS, enabledRootIds: ['1', '2'], showEmptyFolders: false };
+
+  it('与模型无关的字段变化不触发重载（引擎 / 主题 / 每行卡片数 / 默认目录）', () => {
+    expect(affectsBookmarkModel(base, { ...base, searchEngine: 'google' })).toBe(false);
+    expect(affectsBookmarkModel(base, { ...base, theme: 'dark', cardsPerRowHint: 8 })).toBe(false);
+    expect(affectsBookmarkModel(base, { ...base, defaultFolderId: '99' })).toBe(false);
+  });
+
+  it('勾选根目录或空目录可见性变化时触发重载', () => {
+    expect(affectsBookmarkModel(base, { ...base, enabledRootIds: ['1'] })).toBe(true);
+    expect(affectsBookmarkModel(base, { ...base, enabledRootIds: ['1', '2', '3'] })).toBe(true);
+    expect(affectsBookmarkModel(base, { ...base, enabledRootIds: ['2', '1'] })).toBe(true);
+    expect(affectsBookmarkModel(base, { ...base, showEmptyFolders: true })).toBe(true);
+  });
+
+  it('内容完全相同的设置（自己写 sync 的回声）不触发重载', () => {
+    expect(affectsBookmarkModel(base, { ...base, enabledRootIds: [...base.enabledRootIds] })).toBe(false);
   });
 });

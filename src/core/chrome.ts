@@ -2,8 +2,9 @@
  * chrome API 适配层。
  *
  * - 在扩展环境中直接透传 chrome.*；
- * - 在普通浏览器（vite dev）或测试环境中降级为演示数据 / 内存存储，
- *   使 `npm run dev` 无需加载扩展即可预览页面。
+ * - 在开发预览（vite dev）与测试环境中降级为演示数据 / 内存存储，
+ *   使 `npm run dev` 无需加载扩展即可预览页面；
+ * - 生产构建在非扩展环境下显式抛错（getTree），不把故障伪装成演示数据。
  */
 import { BOOKMARKS_DIRTY } from './types';
 
@@ -117,7 +118,11 @@ export async function getTree(): Promise<BookmarkTreeNode[]> {
     const c = chromeGlobal()!;
     return (await c.bookmarks.getTree()) as unknown as BookmarkTreeNode[];
   }
-  return DEMO_TREE;
+  // 演示数据只服务于开发预览（npm run dev）与测试环境；生产构建里缺
+  // chrome.bookmarks 属于真实故障，显式抛错交给 BootError 展示原因，
+  // 不再用假书签把故障伪装成正常状态（P1-6）
+  if (import.meta.env.DEV) return DEMO_TREE;
+  throw new Error('chrome.bookmarks API 不可用：请通过浏览器「加载解压缩的扩展」方式使用 AuraTab');
 }
 
 /* ---------------------------------- 存储 ---------------------------------- */

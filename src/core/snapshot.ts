@@ -82,11 +82,21 @@ export async function loadUI(): Promise<UIState> {
   }
 }
 
-export async function saveUI(patch: UIState): Promise<void> {
-  try {
-    const prev = await loadUI();
-    await storageSet('local', UI_KEY, { ...prev, ...patch });
-  } catch {
-    // UI 状态只是体验优化（记忆侧栏宽度与上次目录），写失败不影响使用
-  }
+/**
+ * 写入串行化队列：saveUI 是"读-改-写"，两次并发写入会在 loadUI 与 storageSet
+ * 之间交错、互相覆盖丢字段（P1-4）。按调用顺序排队，前一次落盘后才开始下一次。
+ */
+let uiWriteQueue: Promise<void> = Promise.resolve();
+
+export function saveUI(patch: UIState): Promise<void> {
+  const task = uiWriteQueue.then(async () => {
+    try {
+      const prev = await loadUI();
+      await storageSet('local', UI_KEY, { ...prev, ...patch });
+    } catch {
+      // UI 状态只是体验优化（记忆侧栏宽度与上次目录），写失败不影响使用
+    }
+  });
+  uiWriteQueue = task;
+  return task;
 }
