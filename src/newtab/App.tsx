@@ -361,32 +361,13 @@ export default function App() {
           </svg>
         </button>
 
-        <label className="perrow-picker" title="每行显示的书签卡片数">
-          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-            <path d="M3 5h8v6H3V5Zm10 0h8v6h-8V5ZM3 13h8v6H3v-6Zm10 0h8v6h-8v-6Z" fill="currentColor" />
-          </svg>
-          <select
-            aria-label="每行书签卡片数"
-            value={String(settings.cardsPerRowHint)}
-            onChange={(e) => {
-              const v = e.target.value;
-              void updateSetting({ cardsPerRowHint: v === 'auto' ? 'auto' : (Number(v) as 6 | 8 | 10) });
-            }}
-          >
-            <option value="auto">自动</option>
-            <option value="6">6 个</option>
-            <option value="8">8 个</option>
-            <option value="10">10 个</option>
-          </select>
-        </label>
-
         <div className="content" ref={contentRef}>
           <div className="hero">
             <Clock cfg={settings.clock} />
           </div>
 
           {/* 独立于时钟的 sticky 容器：下滑时搜索框固定在内容区顶部 */}
-          <div className="search-dock" ref={dockRef}>
+          <div className={`search-dock${settings.searchDockGlass ? ' glass' : ''}`} ref={dockRef}>
             <SearchBox
               query={query}
               onChange={setQuery}

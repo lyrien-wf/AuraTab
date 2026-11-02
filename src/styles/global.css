@@ -328,35 +328,6 @@ kbd {
   position: relative;
 }
 
-/* 右上角「每行卡片数」快捷下拉 */
-.perrow-picker {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12.5px;
-  opacity: 0.55;
-  transition: opacity 0.15s;
-}
-.perrow-picker:hover,
-.perrow-picker:focus-within {
-  opacity: 1;
-}
-.perrow-picker select {
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px 6px;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-}
-
 .content {
   flex: 1;
   overflow-y: auto;
@@ -376,15 +347,49 @@ kbd {
    背景遮住从下方滚过的卡片。top 取负值抵消 margin，使吸附时背景正好齐顶 */
 .search-dock {
   position: sticky;
-  top: -10px;
+  top: -2px;
   z-index: 10;
-  margin-top: 10px;
-  padding: 10px 0 12px;
+  margin-top: 2px;
+  padding: 18px 0 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 18px;
   background: var(--bg);
+  transition: box-shadow 0.15s ease, background-color 0.2s ease;
+}
+/* 吸附时与下方书签区划出边界：1px 描边式阴影 + 柔和下投影（不占布局空间） */
+.search-dock.stuck {
+  box-shadow:
+    0 1px 0 var(--border),
+    0 12px 20px -16px rgba(0, 0, 0, 0.45);
+}
+/* 可选毛玻璃：完全透明底，轻模糊保留下方内容可辨识度；只在边缘做反光，
+   中间不加白色蒙层，保证通透。不支持 backdrop-filter 的环境保持不透明背景 */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .search-dock.stuck.glass {
+    background: transparent;
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
+  }
+  .search-dock.stuck.glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    /* 极淡的斜向镜面高光，仅左上与右下两角可见 */
+    background: linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02) 30%,
+      rgba(255, 255, 255, 0) 55%,
+      rgba(255, 255, 255, 0.03)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+  }
 }
 .search-dock.stuck .searchbox {
   box-shadow: var(--shadow);
@@ -437,13 +442,18 @@ kbd {
     background: var(--panel);
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    transition: transform 0.18s ease;
+  }
+  /* 吸附态：汉堡按钮与搜索框中线对齐（与右上「每行卡片数」下拉一致） */
+  .main:has(.search-dock.stuck) .hamburger {
+    transform: translateY(15px);
   }
   .hero {
     padding-top: max(56px, 12vh);
   }
-  /* 窄屏置顶时两侧收进，避开悬浮的汉堡按钮与每行卡片数下拉 */
+  /* 窄屏置顶时两侧收进，避开左上角的汉堡按钮 */
   .search-dock.stuck .search-wrap {
-    width: calc(100% - 140px);
+    width: calc(100% - 80px);
   }
 }
 

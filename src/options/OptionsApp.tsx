@@ -292,6 +292,16 @@ export default function OptionsApp() {
             <option value="10">10</option>
           </select>
         </div>
+        <div className="opt-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.searchDockGlass}
+              onChange={(e) => update({ searchDockGlass: e.target.checked })}
+            />{' '}
+            吸顶搜索栏毛玻璃效果（下滑固定时背景模糊；关闭则为不透明背景）
+          </label>
+        </div>
       </section>
 
       <section className="opt-section">

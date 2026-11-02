@@ -62,6 +62,8 @@ export interface Settings {
   allowFileUrls: boolean;
   /** 书签在新标签页打开；默认 false = 当前标签页跳转（Ctrl/Cmd+点击与中键始终新标签页） */
   openInNewTab: boolean;
+  /** 吸顶搜索栏毛玻璃效果；默认 true（关闭后吸附时背景不透明） */
+  searchDockGlass: boolean;
 }
 
 /** Service Worker 广播的书签失效事件 */

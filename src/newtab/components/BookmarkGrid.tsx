@@ -9,7 +9,10 @@ const VIRTUAL_THRESHOLD = 300;
 const CARD_HEIGHT = 104;
 const GAP = 12;
 const ROW_HEIGHT = CARD_HEIGHT + GAP;
+/** auto 模式的设计下限 */
 const MIN_CARD_WIDTH = 148;
+/** 固定列数时允许更密：过高的下限会让用户选定的列数被过早降列（如 1536px 窗口选 8 列变成 7 列） */
+const MIN_FIXED_CARD_WIDTH = 120;
 
 interface BookmarkGridProps {
   links: LinkNode[];
@@ -26,12 +29,12 @@ export function BookmarkGrid(props: BookmarkGridProps) {
 }
 
 /**
- * 固定列数：轨道下限取「148px」与「均分 n 列宽度」的较大值，配合 auto-fill，
- * 宽窗口正好 n 列，窄窗口自动降列。
+ * 固定列数：轨道下限取「120px」与「均分 n 列宽度」的较大值，配合 auto-fill，
+ * 空间足够时正好 n 列，只有真正放不下时才自动降列。
  */
 function gridColumns(perRow: Settings['cardsPerRowHint']): CSSProperties {
   if (perRow === 'auto') return {};
-  const minTrack = `max(${MIN_CARD_WIDTH}px, calc((100% - ${(perRow - 1) * GAP}px) / ${perRow}))`;
+  const minTrack = `max(${MIN_FIXED_CARD_WIDTH}px, calc((100% - ${(perRow - 1) * GAP}px) / ${perRow}))`;
   return { gridTemplateColumns: `repeat(auto-fill, minmax(${minTrack}, 1fr))` };
 }
 
@@ -64,9 +67,10 @@ function VirtualGrid({ links, perRow, allowFileUrls, openInNewTab, scrollParentR
     const el = wrapRef.current;
     if (!el) return;
     const compute = () => {
-      // 与 CSS 的 auto-fill 降列行为保持一致：固定列数在窄容器下取能放下的列数
-      const fit = Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_CARD_WIDTH + GAP)));
-      setCols(perRow === 'auto' ? fit : Math.min(perRow, fit));
+      // 与 CSS 的 auto-fill 降列行为保持一致：auto 与固定列数使用不同的最小卡宽
+      const fitAuto = Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_CARD_WIDTH + GAP)));
+      const fitFixed = Math.max(1, Math.floor((el.clientWidth + GAP) / (MIN_FIXED_CARD_WIDTH + GAP)));
+      setCols(perRow === 'auto' ? fitAuto : Math.min(perRow, fitFixed));
       setScrollMargin(el.offsetTop);
     };
     compute();
