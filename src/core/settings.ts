@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
   searchScope: 'all',
   searchEngine: 'bing',
   customSearchUrl: undefined,
+  searchInNewTab: false,
   cardsPerRowHint: 'auto',
   theme: 'system',
   clock: { format24h: true, showSeconds: false, showDate: true },
@@ -88,6 +89,7 @@ export function mergeSettings(stored: Partial<Settings>): Settings {
     searchScope: pickEnum(raw.searchScope, VALID_SCOPE, DEFAULT_SETTINGS.searchScope),
     searchEngine: pickEnum(raw.searchEngine, VALID_ENGINE, DEFAULT_SETTINGS.searchEngine),
     customSearchUrl: typeof raw.customSearchUrl === 'string' ? raw.customSearchUrl : undefined,
+    searchInNewTab: pickBool(raw.searchInNewTab, DEFAULT_SETTINGS.searchInNewTab),
     cardsPerRowHint: VALID_PER_ROW.has(rawPerRow) ? rawPerRow : DEFAULT_SETTINGS.cardsPerRowHint,
     theme: pickEnum(raw.theme, VALID_THEME, DEFAULT_SETTINGS.theme),
     clock: {

@@ -258,6 +258,16 @@ export default function OptionsApp() {
             )}
           </div>
         )}
+        <div className="opt-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.searchInNewTab}
+              onChange={(e) => update({ searchInNewTab: e.target.checked })}
+            />{' '}
+            联网搜索时在新标签页打开结果页（? 前缀 / 无本地结果时；关闭则当前标签页跳转）
+          </label>
+        </div>
       </section>
 
       <section className="opt-section">

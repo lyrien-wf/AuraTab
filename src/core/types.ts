@@ -55,6 +55,8 @@ export interface Settings {
   searchEngine: SearchEngine;
   /** 含 %s 占位符 */
   customSearchUrl?: string;
+  /** 联网搜索（? 前缀 / 无本地结果时）在新标签页打开结果页；默认 false = 当前标签页跳转 */
+  searchInNewTab: boolean;
   cardsPerRowHint: 'auto' | 6 | 8 | 10;
   theme: 'system' | 'light' | 'dark';
   clock: ClockSettings;

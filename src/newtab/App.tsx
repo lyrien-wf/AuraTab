@@ -185,23 +185,31 @@ export default function App() {
     wasSearching.current = searchingNow;
   }, [results]);
 
+  /** 联网搜索：按设置决定当前标签页跳转或新标签页打开 */
+  const goWebSearch = (q: string) => {
+    if (!settings) return;
+    const url = buildSearchUrl(settings, q);
+    if (settings.searchInNewTab) openNewTab(url);
+    else location.href = url;
+  };
+
   const handleSearchEnter = () => {
     if (!settings) return;
     const raw = query.trim();
     if (!raw) return;
     if (engineMode) {
       const q = stripEnginePrefix(raw);
-      if (q) location.href = buildSearchUrl(settings, q);
+      if (q) goWebSearch(q);
       return;
     }
-    // 有结果 → 打开第一条（遵循"新标签页打开"设置）；无结果 → 走搜索引擎
+    // 有结果 → 打开第一条（遵循"新标签页打开书签"设置）；无结果 → 走搜索引擎
     if (results && results.length > 0) {
       const url = results[0].url;
       if (settings.openInNewTab && isSafeUrl(url, settings.allowFileUrls)) openNewTab(url);
       else navigateCurrent(url, settings.allowFileUrls);
       return;
     }
-    location.href = buildSearchUrl(settings, raw);
+    goWebSearch(raw);
   };
 
   /* 侧栏拖拽调宽（240–420）。用 Pointer Capture 保证指针移出窗口或被中断时也能正常收尾 */

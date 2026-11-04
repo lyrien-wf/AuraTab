@@ -155,6 +155,11 @@ describe('mergeSettings 脏数据归一化', () => {
     expect(mergeSettings({ searchDockGlass: 1 as unknown as boolean }).searchDockGlass).toBe(true);
     expect(mergeSettings({ searchDockGlass: false }).searchDockGlass).toBe(false);
   });
+
+  it('非法 searchInNewTab 归一回默认 false，合法布尔保留', () => {
+    expect(mergeSettings({ searchInNewTab: 'yes' as unknown as boolean }).searchInNewTab).toBe(false);
+    expect(mergeSettings({ searchInNewTab: true }).searchInNewTab).toBe(true);
+  });
 });
 
 describe('saveSettings', () => {
