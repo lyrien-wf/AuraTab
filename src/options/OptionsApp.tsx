@@ -312,6 +312,26 @@ export default function OptionsApp() {
             吸顶搜索栏毛玻璃效果（下滑固定时背景模糊；关闭则为不透明背景）
           </label>
         </div>
+        <div className="opt-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.landingAnimation}
+              onChange={(e) => update({ landingAnimation: e.target.checked })}
+            />{' '}
+            目录切换动效（选中 / 取消选中时，时钟与搜索框平滑滑动到新位置）
+          </label>
+        </div>
+        <div className="opt-row">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.bookmarkFade}
+              onChange={(e) => update({ bookmarkFade: e.target.checked })}
+            />{' '}
+            书签淡入淡出（切换目录时从下往上浮现，取消选中时向下淡出）
+          </label>
+        </div>
       </section>
 
       <section className="opt-section">

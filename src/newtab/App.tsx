@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { loadModel } from '../core/bookmarks';
 import { onBookmarksDirty, openNewTab, openOptionsPage } from '../core/chrome';
@@ -18,6 +18,8 @@ import { SearchBox } from './components/SearchBox';
 const MIN_SIDEBAR = 240;
 const MAX_SIDEBAR = 420;
 const DEFAULT_SIDEBAR = 260;
+/** 双击保护窗口：与浏览器双击判定时长对齐，窗口内的再次点击视为"展开"而非切换选中 */
+const CLICK_GUARD_MS = 500;
 
 function clampWidth(w: number): number {
   return Math.min(MAX_SIDEBAR, Math.max(MIN_SIDEBAR, Math.round(w)));
@@ -33,13 +35,25 @@ export default function App() {
   const [menu, setMenu] = useState<{ x: number; y: number; link: LinkNode } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
+  /** 取消选中瞬间冻结的书签网格快照，用于向下淡出 */
+  const [exitingGrid, setExitingGrid] = useState<{
+    links: LinkNode[];
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
   /** 重试计数：变化即重新执行一次启动流程 */
   const [bootNonce, setBootNonce] = useState(0);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
   const treeScrollRef = useRef<HTMLDivElement>(null);
+  /** 切换前时钟 / 搜索框的视口位置，用于滑动过渡 */
+  const flipFromRef = useRef<{ hero: number; dock: number } | null>(null);
+  /** 目录点击守卫：记录上次点击用于双击保护 */
+  const clickGuardRef = useRef<{ id: string; at: number; timer?: number } | null>(null);
   const settingsRef = useRef<Settings | null>(null);
   settingsRef.current = settings;
 
@@ -51,7 +65,8 @@ export default function App() {
       void saveSnapshot(m, s);
       setSelectedId((prev) => {
         if (prev && m.folderIndex.has(prev)) return prev;
-        return [s.defaultFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
+        // 默认目录不存在时不自动选中第一个根，回到「未选中」的居中搜索状态
+        return [s.defaultFolderId].find((id) => id && m.folderIndex.has(id)) ?? null;
       });
     } catch (err) {
       console.error('[AuraTab] 书签刷新失败：', err);
@@ -81,8 +96,8 @@ export default function App() {
         setModel(m);
         void saveSnapshot(m, s);
 
-        const initial =
-          [s.defaultFolderId, ui.lastFolderId, m.roots[0]?.id].find((id) => id && m.folderIndex.has(id)) ?? null;
+        // 无默认目录、也无上次浏览目录时保持未选中：主页只显示居中的搜索框
+        const initial = [s.defaultFolderId, ui.lastFolderId].find((id) => id && m.folderIndex.has(id)) ?? null;
         setSelectedId(initial);
       } catch (err) {
         if (!alive) return;
@@ -148,6 +163,98 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  /* 搜索派生状态 */
+  const engineMode = isEngineQuery(query);
+  const results = useMemo(() => {
+    if (!model || !query.trim() || engineMode) return null;
+    return searchLinks(model, query, {
+      scope: settings?.searchScope ?? 'all',
+      selectedFolderId: selectedId,
+    });
+  }, [model, query, engineMode, settings?.searchScope, selectedId]);
+  const searching = results !== null;
+  /** 未选中任何目录且未在搜索：主页只显示居中的搜索框 */
+  const landing = !searching && !selectedId;
+
+  /* 选中 / 取消选中时，让时钟与搜索框从原位置平滑滑动到新位置（可配置，尊重减少动效偏好） */
+  useLayoutEffect(() => {
+    const from = flipFromRef.current;
+    flipFromRef.current = null;
+    if (!from || !settings?.landingAnimation) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const moving: HTMLElement[] = [];
+    const pairs: [HTMLElement | null, number][] = [
+      [heroRef.current, from.hero],
+      [dockRef.current, from.dock],
+    ];
+    for (const [el, fromTop] of pairs) {
+      if (!el) continue;
+      const dy = fromTop - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${dy}px)`;
+      moving.push(el);
+    }
+    if (!moving.length) return;
+    requestAnimationFrame(() => {
+      for (const el of moving) {
+        el.style.transition = 'transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+        el.style.transform = '';
+      }
+      window.setTimeout(() => {
+        for (const el of moving) el.style.transition = '';
+      }, 240);
+    });
+  }, [landing, settings?.landingAnimation]);
+
+  const captureTopPositions = () => ({
+    hero: heroRef.current?.getBoundingClientRect().top ?? 0,
+    dock: dockRef.current?.getBoundingClientRect().top ?? 0,
+  });
+
+  /** 目录点击：含双击保护与取消选中的延迟，避免双击展开时右侧来回切换 */
+  const handleFolderClick = (id: string) => {
+    setQuery('');
+    setDrawerOpen(false);
+    const now = Date.now();
+    const last = clickGuardRef.current;
+    // 窗口内再次点击同一目录：视为双击展开，取消挂起的取消选中，不改变右侧选中态
+    if (last && last.id === id && now - last.at < CLICK_GUARD_MS) {
+      if (last.timer) clearTimeout(last.timer);
+      clickGuardRef.current = { id, at: now };
+      return;
+    }
+    if (last?.timer) clearTimeout(last.timer);
+    if (id === selectedId) {
+      // 取消选中延迟到双击窗口之后：双击展开时可以有取消的机会
+      const timer = window.setTimeout(() => {
+        // 冻结当前网格位置做向下淡出（超大目录直接切换，避免瞬时创建大量节点）
+        const gridEl = contentRef.current?.querySelector<HTMLElement>(':scope > .grid');
+        if (settings?.bookmarkFade && gridEl && visibleLinks.length > 0 && visibleLinks.length <= 300) {
+          const rect = gridEl.getBoundingClientRect();
+          setExitingGrid({ links: visibleLinks, left: rect.left, top: rect.top, width: rect.width });
+          window.setTimeout(() => setExitingGrid(null), 100);
+        }
+        flipFromRef.current = captureTopPositions();
+        setSelectedId(null);
+        void saveUI({ lastFolderId: undefined });
+        clickGuardRef.current = null;
+      }, CLICK_GUARD_MS);
+      clickGuardRef.current = { id, at: now, timer };
+      return;
+    }
+    // 从居中态进入书签视图才需要滑动过渡
+    setExitingGrid(null);
+    flipFromRef.current = selectedId ? null : captureTopPositions();
+    setSelectedId(id);
+    clickGuardRef.current = { id, at: now };
+  };
+  const visibleLinks = searching
+    ? results!
+    : model && selectedId
+      ? (model.linksByFolder.get(selectedId) ?? [])
+      : [];
+
   /* 搜索框置顶：时钟区完全滚出视口后给 dock 加 .stuck（窄屏避开悬浮控件 + 悬浮阴影） */
   useEffect(() => {
     const dock = dockRef.current;
@@ -159,23 +266,7 @@ export default function App() {
     });
     io.observe(hero);
     return () => io.disconnect();
-  }, [settings, model]);
-
-  /* 搜索派生状态 */
-  const engineMode = isEngineQuery(query);
-  const results = useMemo(() => {
-    if (!model || !query.trim() || engineMode) return null;
-    return searchLinks(model, query, {
-      scope: settings?.searchScope ?? 'all',
-      selectedFolderId: selectedId,
-    });
-  }, [model, query, engineMode, settings?.searchScope, selectedId]);
-  const searching = results !== null;
-  const visibleLinks = searching
-    ? results!
-    : model && selectedId
-      ? (model.linksByFolder.get(selectedId) ?? [])
-      : [];
+  }, [settings, model, landing]);
 
   /* 搜索态进入 / 结果更新 / 退出搜索都回到顶部，避免结果被滚动位置顶出视口 */
   const wasSearching = useRef(false);
@@ -339,11 +430,7 @@ export default function App() {
             selectedId={selectedId}
             expandDepth={settings.treeDefaultExpandDepth}
             scrollParentRef={treeScrollRef}
-            onSelect={(id) => {
-              setSelectedId(id);
-              setQuery('');
-              setDrawerOpen(false);
-            }}
+            onSelect={handleFolderClick}
           />
         </div>
         <div className="sidebar-foot">
@@ -369,8 +456,11 @@ export default function App() {
           </svg>
         </button>
 
-        <div className="content" ref={contentRef}>
-          <div className="hero">
+        <div
+          className={`content${landing ? ' landing' : ''}${settings.bookmarkFade ? ' bookmark-anim' : ''}`}
+          ref={contentRef}
+        >
+          <div className="hero" ref={heroRef}>
             <Clock cfg={settings.clock} />
           </div>
 
@@ -399,18 +489,36 @@ export default function App() {
             )}
           </div>
 
-          {visibleLinks.length > 0 ? (
-            <BookmarkGrid
-              links={visibleLinks}
-              perRow={settings.cardsPerRowHint}
-              allowFileUrls={settings.allowFileUrls}
-              openInNewTab={settings.openInNewTab}
-              scrollParentRef={contentRef}
-              onCardContextMenu={handleCardContextMenu}
-            />
-          ) : (
-            renderEmptyState()
+          {/* 取消选中时向下淡出的网格快照（固定定位，不参与居中布局） */}
+          {exitingGrid && landing && (
+            <div
+              className="grid-exit"
+              style={{ left: exitingGrid.left, top: exitingGrid.top, width: exitingGrid.width }}
+            >
+              <BookmarkGrid
+                links={exitingGrid.links}
+                perRow={settings.cardsPerRowHint}
+                allowFileUrls={settings.allowFileUrls}
+                openInNewTab={settings.openInNewTab}
+                scrollParentRef={contentRef}
+                onCardContextMenu={handleCardContextMenu}
+              />
+            </div>
           )}
+
+          {!landing &&
+            (visibleLinks.length > 0 ? (
+              <BookmarkGrid
+                links={visibleLinks}
+                perRow={settings.cardsPerRowHint}
+                allowFileUrls={settings.allowFileUrls}
+                openInNewTab={settings.openInNewTab}
+                scrollParentRef={contentRef}
+                onCardContextMenu={handleCardContextMenu}
+              />
+            ) : (
+              renderEmptyState()
+            ))}
         </div>
       </main>
 

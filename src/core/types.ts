@@ -66,6 +66,10 @@ export interface Settings {
   openInNewTab: boolean;
   /** 吸顶搜索栏毛玻璃效果；默认 true（关闭后吸附时背景不透明） */
   searchDockGlass: boolean;
+  /** 目录选中 / 取消选中时的滑动过渡动效；默认 true */
+  landingAnimation: boolean;
+  /** 书签网格淡入淡出（从下往上浮现 / 向下淡出）；默认 true */
+  bookmarkFade: boolean;
 }
 
 /** Service Worker 广播的书签失效事件 */

@@ -160,6 +160,16 @@ describe('mergeSettings 脏数据归一化', () => {
     expect(mergeSettings({ searchInNewTab: 'yes' as unknown as boolean }).searchInNewTab).toBe(false);
     expect(mergeSettings({ searchInNewTab: true }).searchInNewTab).toBe(true);
   });
+
+  it('非法 landingAnimation 归一回默认 true，合法布尔保留', () => {
+    expect(mergeSettings({ landingAnimation: 'no' as unknown as boolean }).landingAnimation).toBe(true);
+    expect(mergeSettings({ landingAnimation: false }).landingAnimation).toBe(false);
+  });
+
+  it('非法 bookmarkFade 归一回默认 true，合法布尔保留', () => {
+    expect(mergeSettings({ bookmarkFade: 'no' as unknown as boolean }).bookmarkFade).toBe(true);
+    expect(mergeSettings({ bookmarkFade: false }).bookmarkFade).toBe(false);
+  });
 });
 
 describe('saveSettings', () => {
