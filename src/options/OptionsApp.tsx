@@ -120,7 +120,7 @@ export default function OptionsApp() {
       setSaveError(null);
       setSaved(true);
     } catch (err) {
-      // 写 sync 可能因配额/扩展上下文失效而失败，不能让用户误以为已保存
+      // 写本地存储可能因配额/扩展上下文失效而失败，不能让用户误以为已保存
       console.error('[AuraTab] 设置保存失败：', err);
       setSaveError(describeError(err));
       setSaved(false);

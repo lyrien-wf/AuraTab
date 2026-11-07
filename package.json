@@ -10,8 +10,7 @@
     "build": "node scripts/sync-version.mjs && tsc --noEmit && vite build && vite build -c vite.config.sw.ts",
     "build:fast": "node scripts/sync-version.mjs && vite build && vite build -c vite.config.sw.ts",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "icons": "node scripts/gen-icons.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.8.0",

@@ -76,7 +76,7 @@ export default function PopupApp() {
       await saveSettings(updated);
       setSaveError(null);
     } catch (err) {
-      // 写 sync 可能因配额/扩展上下文失效而失败，提示而不是静默丢弃
+      // 写本地存储可能因配额/扩展上下文失效而失败，提示而不是静默丢弃
       console.error('[AuraTab] 主题保存失败：', err);
       setSaveError(describeError(err));
     }

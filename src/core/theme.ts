@@ -4,9 +4,9 @@
  */
 import type { Settings } from './types';
 
-export type ResolvedTheme = 'light' | 'dark';
+type ResolvedTheme = 'light' | 'dark';
 
-export function resolveTheme(theme: Settings['theme']): ResolvedTheme {
+function resolveTheme(theme: Settings['theme']): ResolvedTheme {
   if (theme !== 'system') return theme;
   const mq = globalThis.matchMedia?.('(prefers-color-scheme: dark)');
   return mq?.matches ? 'dark' : 'light';

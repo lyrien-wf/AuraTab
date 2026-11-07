@@ -3,7 +3,7 @@ import { faviconUrl } from '../../core/chrome';
 import type { LinkNode } from '../../core/types';
 
 /** 域名 → 稳定的色相，用于降级首字母色块 */
-export function colorForSeed(seed: string): string {
+function colorForSeed(seed: string): string {
   let h = 5381;
   for (let i = 0; i < seed.length; i++) {
     h = ((h << 5) + h + seed.charCodeAt(i)) >>> 0;

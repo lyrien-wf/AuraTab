@@ -175,6 +175,11 @@ export default function App() {
   const searching = results !== null;
   /** 未选中任何目录且未在搜索：主页只显示居中的搜索框 */
   const landing = !searching && !selectedId;
+  const visibleLinks = searching
+    ? results!
+    : model && selectedId
+      ? (model.linksByFolder.get(selectedId) ?? [])
+      : [];
 
   /* 选中 / 取消选中时，让时钟与搜索框从原位置平滑滑动到新位置（可配置，尊重减少动效偏好） */
   useLayoutEffect(() => {
@@ -249,11 +254,14 @@ export default function App() {
     setSelectedId(id);
     clickGuardRef.current = { id, at: now };
   };
-  const visibleLinks = searching
-    ? results!
-    : model && selectedId
-      ? (model.linksByFolder.get(selectedId) ?? [])
-      : [];
+
+  /* 卸载时清理双击守卫的挂起定时器 */
+  useEffect(
+    () => () => {
+      if (clickGuardRef.current?.timer) clearTimeout(clickGuardRef.current.timer);
+    },
+    [],
+  );
 
   /* 搜索框置顶：时钟区完全滚出视口后给 dock 加 .stuck（窄屏避开悬浮控件 + 悬浮阴影） */
   useEffect(() => {
@@ -334,7 +342,7 @@ export default function App() {
     setMenu({ x: e.clientX, y: e.clientY, link });
   }, []);
 
-  /** 页面上的快捷设置修改（搜索引擎、每行卡片数）：本地立即生效并保存到 sync */
+  /** 页面上的快捷设置修改（搜索引擎）：本地立即生效并保存到本机存储 */
   const updateSetting = useCallback(async (patch: Partial<Settings>) => {
     const current = settingsRef.current;
     if (!current) return;
@@ -493,6 +501,7 @@ export default function App() {
           {exitingGrid && landing && (
             <div
               className="grid-exit"
+              aria-hidden="true"
               style={{ left: exitingGrid.left, top: exitingGrid.top, width: exitingGrid.width }}
             >
               <BookmarkGrid

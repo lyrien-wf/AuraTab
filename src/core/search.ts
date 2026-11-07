@@ -6,7 +6,7 @@ import type { BookmarkModel, LinkNode, Settings } from './types';
 
 export const SEARCH_LIMIT = 200;
 
-export interface SearchOptions {
+interface SearchOptions {
   scope: 'current' | 'all';
   selectedFolderId?: string | null;
   limit?: number;

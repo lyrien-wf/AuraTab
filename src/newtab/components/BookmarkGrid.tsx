@@ -60,7 +60,8 @@ function SimpleGrid({ links, perRow, allowFileUrls, openInNewTab, onCardContextM
  */
 function VirtualGrid({ links, perRow, allowFileUrls, openInNewTab, scrollParentRef, onCardContextMenu }: BookmarkGridProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [cols, setCols] = useState(6);
+  // 初值与固定列数设置一致，避免首帧用 6 列切分后再重算造成的闪动
+  const [cols, setCols] = useState<number>(perRow === 'auto' ? 6 : perRow);
   const [scrollMargin, setScrollMargin] = useState(0);
 
   useEffect(() => {

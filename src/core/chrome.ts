@@ -21,7 +21,7 @@ function chromeGlobal(): typeof chrome | undefined {
   return typeof globalThis !== 'undefined' ? (globalThis as { chrome?: typeof chrome }).chrome : undefined;
 }
 
-export function hasBookmarks(): boolean {
+function hasBookmarks(): boolean {
   const c = chromeGlobal();
   return !!c?.bookmarks?.getTree;
 }
@@ -168,7 +168,7 @@ export function onBookmarksDirty(cb: () => void): () => void {
 
 /* ---------------------------------- 杂项 ---------------------------------- */
 
-export function runtimeGetURL(path: string): string | null {
+function runtimeGetURL(path: string): string | null {
   const c = chromeGlobal();
   return c?.runtime?.getURL ? c.runtime.getURL(path) : null;
 }

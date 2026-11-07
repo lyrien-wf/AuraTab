@@ -15,7 +15,7 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** 写入阈值：序列化结果超过 2MB 跳过缓存 */
 const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024;
 
-export interface ModelSnapshot {
+interface ModelSnapshot {
   v: 2;
   savedAt: number;
   rootsKey: string;
@@ -23,7 +23,7 @@ export interface ModelSnapshot {
   links: [string, LinkNode[]][];
 }
 
-export interface UIState {
+interface UIState {
   sidebarWidth?: number;
   lastFolderId?: string;
 }
@@ -33,7 +33,7 @@ function scopeKey(scope: Pick<Settings, 'enabledRootIds' | 'showEmptyFolders'>):
   return `${[...scope.enabledRootIds].sort().join(',')}|${scope.showEmptyFolders ? 1 : 0}`;
 }
 
-export function serializeModel(
+function serializeModel(
   model: BookmarkModel,
   scope: Pick<Settings, 'enabledRootIds' | 'showEmptyFolders'>,
 ): ModelSnapshot {
@@ -46,7 +46,7 @@ export function serializeModel(
   };
 }
 
-export function reviveModel(snapshot: ModelSnapshot): BookmarkModel {
+function reviveModel(snapshot: ModelSnapshot): BookmarkModel {
   const folderIndex = new Map<string, FolderNode>();
   const walk = (folders: FolderNode[]) => {
     for (const f of folders) {
